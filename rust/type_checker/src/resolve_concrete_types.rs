@@ -11,8 +11,9 @@ use typed_ast::{
     ConcreteBinaryOperatorExpression, ConcreteBlockExpression, ConcreteBooleanExpression,
     ConcreteDeclarationExpression, ConcreteDocument, ConcreteExpression,
     ConcreteFunctionExpression, ConcreteFunctionType, ConcreteIdentifierExpression,
-    ConcreteIntegerLiteralExpression, ConcreteListType, ConcreteRecordType, ConcreteTagUnionType,
-    ConcreteType, ConcreteVariableDeclaration, PrimitiveType, TypedVariableDeclaration,
+    ConcreteIntegerLiteralExpression, ConcreteListType, ConcreteRecordType,
+    ConcreteStringLiteralExpression, ConcreteTagUnionType, ConcreteType,
+    ConcreteVariableDeclaration, PrimitiveType, TypedVariableDeclaration,
 };
 
 // TODO(aaron) return correct tag for non-boolean
@@ -230,7 +231,16 @@ fn resolve_expression<'a>(
         // TODO(aaron) GenericExpression::List
         // TODO(aaron) GenericExpression::Record
         // TODO(aaron) GenericExpression::RecordAssignment
-        // TODO(aaron) GenericExpression::StringLiteral
+        GenericExpression::StringLiteral(generic_string_literal) => Ok(
+            ConcreteExpression::StringLiteral(Box::new(ConcreteStringLiteralExpression {
+                expression_type: resolve_generic_type(
+                    simplified_schema,
+                    substitutions,
+                    generic_string_literal.expression_type.type_id,
+                )?,
+                value: generic_string_literal.value,
+            })),
+        ),
         // TODO(aaron) GenericExpression::Tag
         // TODO(aaron) GenericExpression::UnaryOperator
         _ => unimplemented!(),
