@@ -1,11 +1,8 @@
 use typed_ast::ConcreteStringLiteralExpression;
 
-// Helper function to convert a numeric value [0,15] to a hex digit [0,f].
-// Undefined behavior for inputs outside the given domain.
-fn hex_value_to_hex_digit(value: u32) -> char {
-    char::from_u32(if value < 10 { value + 48 } else { value + 87 })
-        .map_or_else(|| unreachable!(), |x| x)
-}
+static HEX_VALUE_TO_HEX_DIGIT: &[char] = &[
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+];
 
 pub fn print_string_literal(node: &ConcreteStringLiteralExpression) -> String {
     let mut result = String::new();
@@ -40,10 +37,10 @@ pub fn print_string_literal(node: &ConcreteStringLiteralExpression) -> String {
                 result.push_str("\\\\");
             }
             '\0'..='\x1F' | '\x7F' => {
-                let unicode_codepoint = character as u32;
+                let unicode_codepoint = character as usize;
                 result.push_str("\\x");
-                result.push(hex_value_to_hex_digit(unicode_codepoint >> 4));
-                result.push(hex_value_to_hex_digit(unicode_codepoint & 0xF));
+                result.push(HEX_VALUE_TO_HEX_DIGIT[unicode_codepoint >> 4]);
+                result.push(HEX_VALUE_TO_HEX_DIGIT[unicode_codepoint & 0xF]);
             }
             _ => {
                 result.push(character);
