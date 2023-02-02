@@ -6,3 +6,6 @@ two = 2
 
 @export
 onePlusTwo = 1 + 2
+
+@export
+fiveMinusTwo = 5 - 2
