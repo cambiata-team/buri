@@ -3,3 +3,6 @@ emptyString = ""
 
 @export
 helloString = "hello"
+
+@export
+newlineString = "\n"

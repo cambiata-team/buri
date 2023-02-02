@@ -9,3 +9,7 @@ it("empty string literal should have the value of an empty string", () => {
 it("hello string literal should have the value of hello", () => {
     expect(helloString.valueOf()).toBe("hello")
 })
+
+it("newline string literal should have the value of newline", () => {
+    expect(helloString.valueOf()).toBe("\n")
+})
