@@ -12,3 +12,6 @@ fiveMinusTwo = 5 - 2
 
 @export
 twoTimesThree = 2 * 3
+
+@export
+sixDividedByTwo = 6 / 2
