@@ -1,4 +1,4 @@
-import { fiveMinusTwo, one, onePlusTwo, two } from "@tests/js/valid/integers/unsigned.mjs"
+import { fiveMinusTwo, one, onePlusTwo, two, twoTimesThree } from "@tests/js/valid/integers/unsigned.mjs"
 
 import { expect, it } from "bun:test"
 
@@ -16,4 +16,8 @@ it("literal one plus literal two should equal three", () => {
 
 it("literal five minus literal two should equal three", () => {
     expect(fiveMinusTwo.valueOf()).toBe(3)
+})
+
+it("literal two times literal three should equal six", () => {
+    expect(twoTimesThree.valueOf()).toBe(6)
 })

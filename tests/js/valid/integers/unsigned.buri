@@ -9,3 +9,6 @@ onePlusTwo = 1 + 2
 
 @export
 fiveMinusTwo = 5 - 2
+
+@export
+twoTimesThree = 2 * 3
