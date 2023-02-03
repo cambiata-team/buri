@@ -130,7 +130,7 @@ fn resolve_generic_type(
 fn resolve_binary_operator(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
-    generic_binary_operator: Box<GenericBinaryOperatorExpression>,
+    generic_binary_operator: GenericBinaryOperatorExpression,
 ) -> Result<ConcreteExpression, ()> {
     Ok(ConcreteExpression::BinaryOperator(Box::new(
         ConcreteBinaryOperatorExpression {
@@ -161,7 +161,7 @@ fn resolve_expression<'a>(
 ) -> Result<ConcreteExpression, ()> {
     match expression {
         GenericExpression::BinaryOperator(generic_binary_operator) => {
-            resolve_binary_operator(simplified_schema, substitutions, generic_binary_operator)
+            resolve_binary_operator(simplified_schema, substitutions, *generic_binary_operator)
         }
         GenericExpression::Block(generic_block) => Ok(ConcreteExpression::Block(Box::new(
             ConcreteBlockExpression {
