@@ -3,7 +3,7 @@ use crate::{
     generic_nodes::{
         GenericBinaryOperatorExpression, GenericBlockExpression, GenericBooleanExpression,
         GenericDeclarationExpression, GenericDocument, GenericExpression,
-        GenericVariableDeclaration,
+        GenericFunctionExpression, GenericVariableDeclaration,
     },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
@@ -215,6 +215,25 @@ fn resolve_declaration(
     )))
 }
 
+fn resolve_function(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_function: GenericFunctionExpression,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::Function(Box::new(
+        ConcreteFunctionExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_function.expression_type.type_id,
+            )?,
+            // TODO(aaron) add argument names to return value
+            argument_names: vec![],
+            body: resolve_expression(simplified_schema, substitutions, generic_function.body)?,
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
@@ -233,18 +252,9 @@ fn resolve_expression<'a>(
         GenericExpression::Declaration(generic_declaration) => {
             resolve_declaration(simplified_schema, substitutions, *generic_declaration)
         }
-        GenericExpression::Function(generic_function) => Ok(ConcreteExpression::Function(
-            Box::new(ConcreteFunctionExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_function.expression_type.type_id,
-                )?,
-                // TODO(aaron) add argument names to return value
-                argument_names: vec![],
-                body: resolve_expression(simplified_schema, substitutions, generic_function.body)?,
-            }),
-        )),
+        GenericExpression::Function(generic_function) => {
+            resolve_function(simplified_schema, substitutions, *generic_function)
+        }
         // TODO(aaron) GenericExpression::FunctionArguments
         GenericExpression::Identifier(generic_identifier) => Ok(ConcreteExpression::Identifier(
             Box::new(ConcreteIdentifierExpression {
