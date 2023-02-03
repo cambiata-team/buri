@@ -6,3 +6,6 @@ helloString = "hello"
 
 @export
 newlineString = "\n"
+
+@export
+piString = "π"

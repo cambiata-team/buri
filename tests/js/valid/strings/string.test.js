@@ -1,4 +1,4 @@
-import { helloString, emptyString, newlineString } from "@tests/js/valid/strings/string.mjs"
+import { helloString, emptyString, newlineString, piString } from "@tests/js/valid/strings/string.mjs"
 
 import { expect, it } from "bun:test"
 
@@ -12,4 +12,8 @@ it("hello string literal should have the value of hello", () => {
 
 it("newline string literal should have the value of newline", () => {
     expect(newlineString.valueOf()).toBe("\n")
+})
+
+it("pi string literal should have the value of pi", () => {
+    expect(piString.valueOf()).toBe("π")
 })
