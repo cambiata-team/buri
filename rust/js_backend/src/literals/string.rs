@@ -85,6 +85,15 @@ mod test {
     }
 
     #[test]
+    fn null_is_escaped_with_hex_sequence() {
+        let node = ConcreteStringLiteralExpression {
+            expression_type: ConcreteType::Primitive(PrimitiveType::Str),
+            value: "\0".to_string(),
+        };
+        assert_eq!(print_string_literal(&node), "\"\\x00\"");
+    }
+
+    #[test]
     fn non_ascii_character_is_not_escaped() {
         let node = ConcreteStringLiteralExpression {
             expression_type: ConcreteType::Primitive(PrimitiveType::Str),
