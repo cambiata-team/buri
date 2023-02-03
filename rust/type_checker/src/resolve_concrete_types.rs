@@ -4,7 +4,7 @@ use crate::{
         GenericBinaryOperatorExpression, GenericBlockExpression, GenericBooleanExpression,
         GenericDeclarationExpression, GenericDocument, GenericExpression,
         GenericFunctionExpression, GenericIdentifierExpression, GenericIntegerLiteralExpression,
-        GenericVariableDeclaration,
+        GenericStringLiteralExpression, GenericVariableDeclaration,
     },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
@@ -270,6 +270,23 @@ fn resolve_integer(
     )))
 }
 
+fn resolve_string_literal(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_string_literal: GenericStringLiteralExpression,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::StringLiteral(Box::new(
+        ConcreteStringLiteralExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_string_literal.expression_type.type_id,
+            )?,
+            value: generic_string_literal.value,
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
@@ -302,16 +319,9 @@ fn resolve_expression<'a>(
         // TODO(aaron) GenericExpression::List
         // TODO(aaron) GenericExpression::Record
         // TODO(aaron) GenericExpression::RecordAssignment
-        GenericExpression::StringLiteral(generic_string_literal) => Ok(
-            ConcreteExpression::StringLiteral(Box::new(ConcreteStringLiteralExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_string_literal.expression_type.type_id,
-                )?,
-                value: generic_string_literal.value,
-            })),
-        ),
+        GenericExpression::StringLiteral(generic_string_literal) => {
+            resolve_string_literal(simplified_schema, substitutions, *generic_string_literal)
+        }
         // TODO(aaron) GenericExpression::Tag
         // TODO(aaron) GenericExpression::UnaryOperator
         _ => unimplemented!(),
