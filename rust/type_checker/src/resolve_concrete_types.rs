@@ -1,8 +1,8 @@
 use crate::{
     constraints::Constraint,
     generic_nodes::{
-        GenericBinaryOperatorExpression, GenericBlockExpression, GenericDocument,
-        GenericExpression, GenericVariableDeclaration,
+        GenericBinaryOperatorExpression, GenericBlockExpression, GenericBooleanExpression,
+        GenericDocument, GenericExpression, GenericVariableDeclaration,
     },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
@@ -172,6 +172,23 @@ fn resolve_block(
     )))
 }
 
+fn resolve_boolean(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_boolean: &GenericBooleanExpression,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::Boolean(Box::new(
+        ConcreteBooleanExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_boolean.expression_type.type_id,
+            )?,
+            value: generic_boolean.value,
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
@@ -184,16 +201,9 @@ fn resolve_expression<'a>(
         GenericExpression::Block(generic_block) => {
             resolve_block(simplified_schema, substitutions, &generic_block)
         }
-        GenericExpression::Boolean(generic_boolean) => Ok(ConcreteExpression::Boolean(Box::new(
-            ConcreteBooleanExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_boolean.expression_type.type_id,
-                )?,
-                value: generic_boolean.value,
-            },
-        ))),
+        GenericExpression::Boolean(generic_boolean) => {
+            resolve_boolean(simplified_schema, substitutions, &generic_boolean)
+        }
         GenericExpression::Declaration(generic_declaration) => Ok(ConcreteExpression::Declaration(
             Box::new(ConcreteDeclarationExpression {
                 expression_type: resolve_generic_type(
