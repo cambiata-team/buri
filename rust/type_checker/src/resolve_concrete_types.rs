@@ -1,8 +1,8 @@
 use crate::{
     constraints::Constraint,
     generic_nodes::{
-        GenericBinaryOperatorExpression, GenericDocument, GenericExpression,
-        GenericVariableDeclaration,
+        GenericBinaryOperatorExpression, GenericBlockExpression, GenericDocument,
+        GenericExpression, GenericVariableDeclaration,
     },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
@@ -154,6 +154,24 @@ fn resolve_binary_operator(
     )))
 }
 
+fn resolve_block(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_block: &GenericBlockExpression,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::Block(Box::new(
+        ConcreteBlockExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_block.expression_type.type_id,
+            )?,
+            // TODO(aaron) add block contents to return value
+            contents: vec![],
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
@@ -163,17 +181,9 @@ fn resolve_expression<'a>(
         GenericExpression::BinaryOperator(generic_binary_operator) => {
             resolve_binary_operator(simplified_schema, substitutions, *generic_binary_operator)
         }
-        GenericExpression::Block(generic_block) => Ok(ConcreteExpression::Block(Box::new(
-            ConcreteBlockExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_block.expression_type.type_id,
-                )?,
-                // TODO(aaron) add block contents to return value
-                contents: vec![],
-            },
-        ))),
+        GenericExpression::Block(generic_block) => {
+            resolve_block(simplified_schema, substitutions, &generic_block)
+        }
         GenericExpression::Boolean(generic_boolean) => Ok(ConcreteExpression::Boolean(Box::new(
             ConcreteBooleanExpression {
                 expression_type: resolve_generic_type(
