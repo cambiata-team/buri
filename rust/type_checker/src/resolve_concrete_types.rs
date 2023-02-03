@@ -2,7 +2,8 @@ use crate::{
     constraints::Constraint,
     generic_nodes::{
         GenericBinaryOperatorExpression, GenericBlockExpression, GenericBooleanExpression,
-        GenericDocument, GenericExpression, GenericVariableDeclaration,
+        GenericDeclarationExpression, GenericDocument, GenericExpression,
+        GenericVariableDeclaration,
     },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
@@ -189,6 +190,31 @@ fn resolve_boolean(
     )))
 }
 
+fn resolve_declaration(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_declaration: GenericDeclarationExpression,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::Declaration(Box::new(
+        ConcreteDeclarationExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_declaration.expression_type.type_id,
+            )?,
+            identifier: match resolve_expression(
+                simplified_schema,
+                substitutions,
+                GenericExpression::Identifier(Box::new(generic_declaration.identifier)),
+            )? {
+                ConcreteExpression::Identifier(x) => *x,
+                _ => return Err(()),
+            },
+            value: resolve_expression(simplified_schema, substitutions, generic_declaration.value)?,
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
@@ -204,28 +230,9 @@ fn resolve_expression<'a>(
         GenericExpression::Boolean(generic_boolean) => {
             resolve_boolean(simplified_schema, substitutions, &generic_boolean)
         }
-        GenericExpression::Declaration(generic_declaration) => Ok(ConcreteExpression::Declaration(
-            Box::new(ConcreteDeclarationExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_declaration.expression_type.type_id,
-                )?,
-                identifier: match resolve_expression(
-                    simplified_schema,
-                    substitutions,
-                    GenericExpression::Identifier(Box::new(generic_declaration.identifier)),
-                )? {
-                    ConcreteExpression::Identifier(x) => *x,
-                    _ => return Err(()),
-                },
-                value: resolve_expression(
-                    simplified_schema,
-                    substitutions,
-                    generic_declaration.value,
-                )?,
-            }),
-        )),
+        GenericExpression::Declaration(generic_declaration) => {
+            resolve_declaration(simplified_schema, substitutions, *generic_declaration)
+        }
         GenericExpression::Function(generic_function) => Ok(ConcreteExpression::Function(
             Box::new(ConcreteFunctionExpression {
                 expression_type: resolve_generic_type(
