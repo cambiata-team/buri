@@ -3,7 +3,8 @@ use crate::{
     generic_nodes::{
         GenericBinaryOperatorExpression, GenericBlockExpression, GenericBooleanExpression,
         GenericDeclarationExpression, GenericDocument, GenericExpression,
-        GenericFunctionExpression, GenericIdentifierExpression, GenericVariableDeclaration,
+        GenericFunctionExpression, GenericIdentifierExpression, GenericIntegerLiteralExpression,
+        GenericVariableDeclaration,
     },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
@@ -252,6 +253,23 @@ fn resolve_identifier(
     )))
 }
 
+fn resolve_integer(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_integer: &GenericIntegerLiteralExpression,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::Integer(Box::new(
+        ConcreteIntegerLiteralExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_integer.expression_type.type_id,
+            )?,
+            value: generic_integer.value,
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
@@ -278,16 +296,9 @@ fn resolve_expression<'a>(
             resolve_identifier(simplified_schema, substitutions, *generic_identifier)
         }
         // TODO(aaron) GenericExpression::If
-        GenericExpression::Integer(generic_integer) => Ok(ConcreteExpression::Integer(Box::new(
-            ConcreteIntegerLiteralExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_integer.expression_type.type_id,
-                )?,
-                value: generic_integer.value,
-            },
-        ))),
+        GenericExpression::Integer(generic_integer) => {
+            resolve_integer(simplified_schema, substitutions, &generic_integer)
+        }
         // TODO(aaron) GenericExpression::List
         // TODO(aaron) GenericExpression::Record
         // TODO(aaron) GenericExpression::RecordAssignment
