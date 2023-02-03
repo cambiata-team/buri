@@ -9,3 +9,6 @@ newlineString = "\n"
 
 @export
 piString = "π"
+
+@export
+helloWorldString = "Hello" ++ "World"
