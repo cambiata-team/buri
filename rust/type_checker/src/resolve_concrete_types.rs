@@ -3,7 +3,7 @@ use crate::{
     generic_nodes::{
         GenericBinaryOperatorExpression, GenericBlockExpression, GenericBooleanExpression,
         GenericDeclarationExpression, GenericDocument, GenericExpression,
-        GenericFunctionExpression, GenericVariableDeclaration,
+        GenericFunctionExpression, GenericIdentifierExpression, GenericVariableDeclaration,
     },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
@@ -234,6 +234,24 @@ fn resolve_function(
     )))
 }
 
+fn resolve_identifier(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_identifier: GenericIdentifierExpression,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::Identifier(Box::new(
+        ConcreteIdentifierExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_identifier.expression_type.type_id,
+            )?,
+            name: generic_identifier.name,
+            is_disregarded: generic_identifier.is_disregarded,
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
@@ -256,17 +274,9 @@ fn resolve_expression<'a>(
             resolve_function(simplified_schema, substitutions, *generic_function)
         }
         // TODO(aaron) GenericExpression::FunctionArguments
-        GenericExpression::Identifier(generic_identifier) => Ok(ConcreteExpression::Identifier(
-            Box::new(ConcreteIdentifierExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_identifier.expression_type.type_id,
-                )?,
-                name: generic_identifier.name,
-                is_disregarded: generic_identifier.is_disregarded,
-            }),
-        )),
+        GenericExpression::Identifier(generic_identifier) => {
+            resolve_identifier(simplified_schema, substitutions, *generic_identifier)
+        }
         // TODO(aaron) GenericExpression::If
         GenericExpression::Integer(generic_integer) => Ok(ConcreteExpression::Integer(Box::new(
             ConcreteIntegerLiteralExpression {
