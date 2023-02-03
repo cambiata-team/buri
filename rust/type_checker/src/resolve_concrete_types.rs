@@ -1,6 +1,9 @@
 use crate::{
     constraints::Constraint,
-    generic_nodes::{GenericDocument, GenericExpression, GenericVariableDeclaration},
+    generic_nodes::{
+        GenericBinaryOperatorExpression, GenericDocument, GenericExpression,
+        GenericVariableDeclaration,
+    },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
     GenericTypeId,
@@ -124,32 +127,42 @@ fn resolve_generic_type(
     }
 }
 
+fn resolve_binary_operator(
+    simplified_schema: &TypeSchema,
+    substitutions: &mut TypeSchemaSubstitutions,
+    generic_binary_operator: Box<GenericBinaryOperatorExpression>,
+) -> Result<ConcreteExpression, ()> {
+    Ok(ConcreteExpression::BinaryOperator(Box::new(
+        ConcreteBinaryOperatorExpression {
+            expression_type: resolve_generic_type(
+                simplified_schema,
+                substitutions,
+                generic_binary_operator.expression_type.type_id,
+            )?,
+            symbol: generic_binary_operator.symbol,
+            left_child: resolve_expression(
+                simplified_schema,
+                substitutions,
+                generic_binary_operator.left_child,
+            )?,
+            right_child: resolve_expression(
+                simplified_schema,
+                substitutions,
+                generic_binary_operator.right_child,
+            )?,
+        },
+    )))
+}
+
 fn resolve_expression<'a>(
     simplified_schema: &TypeSchema,
     substitutions: &mut TypeSchemaSubstitutions,
     expression: GenericExpression<'a>,
 ) -> Result<ConcreteExpression, ()> {
     match expression {
-        GenericExpression::BinaryOperator(generic_binary_operator) => Ok(
-            ConcreteExpression::BinaryOperator(Box::new(ConcreteBinaryOperatorExpression {
-                expression_type: resolve_generic_type(
-                    simplified_schema,
-                    substitutions,
-                    generic_binary_operator.expression_type.type_id,
-                )?,
-                symbol: generic_binary_operator.symbol,
-                left_child: resolve_expression(
-                    simplified_schema,
-                    substitutions,
-                    generic_binary_operator.left_child,
-                )?,
-                right_child: resolve_expression(
-                    simplified_schema,
-                    substitutions,
-                    generic_binary_operator.right_child,
-                )?,
-            })),
-        ),
+        GenericExpression::BinaryOperator(generic_binary_operator) => {
+            resolve_binary_operator(simplified_schema, substitutions, generic_binary_operator)
+        }
         GenericExpression::Block(generic_block) => Ok(ConcreteExpression::Block(Box::new(
             ConcreteBlockExpression {
                 expression_type: resolve_generic_type(
