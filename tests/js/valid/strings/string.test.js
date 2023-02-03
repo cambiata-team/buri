@@ -14,6 +14,6 @@ it("newline string literal should have the value of newline", () => {
     expect(newlineString.valueOf()).toBe("\n")
 })
 
-it("pi string literal should have the value of pi", () => {
+it("pi string literal should have the value of letter pi", () => {
     expect(piString.valueOf()).toBe("π")
 })
