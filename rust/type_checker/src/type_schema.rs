@@ -41,7 +41,13 @@ impl TypeSchema {
         }
         constraint_count
     }
-    pub fn add_import(&mut self, identifier_name: String, identifier_typ: GenericTypeId) {
-        self.imports.insert(identifier_name, identifier_typ);
+    pub fn get_declaration_type(&mut self, variable_name: &str) -> GenericTypeId {
+        if let Some(x) = self.imports.get(variable_name) {
+            *x
+        } else {
+            let new_type_id = self.make_id();
+            self.imports.insert(variable_name.to_owned(), new_type_id);
+            new_type_id
+        }
     }
 }
