@@ -9,6 +9,7 @@ use crate::{
         GenericSourcedType, GenericStringLiteralExpression, GenericTagExpression,
         GenericUnaryOperatorExpression,
     },
+    scope::Scope,
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
     GenericTypeId,
@@ -20,6 +21,12 @@ use ast::{
 };
 use std::collections::HashMap;
 use typed_ast::PrimitiveType;
+
+pub struct TranslationContext<'a, 'b> {
+    schema: &'a TypeSchema,
+    substitutions: &'a TypeSchemaSubstitutions,
+    scope: &'a Scope<'b, 'b>,
+}
 
 const fn constrain_equal_to_num() -> Constraint {
     Constraint::EqualToPrimitive(PrimitiveType::Num)
