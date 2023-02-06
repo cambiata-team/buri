@@ -1,4 +1,4 @@
-use crate::{type_schema::TypeSchema, GenericTypeId};
+use crate::GenericTypeId;
 use std::collections::HashMap;
 
 pub struct Scope<'a, 'b> {
@@ -9,7 +9,10 @@ pub struct Scope<'a, 'b> {
 impl<'a, 'b> Scope<'a, 'b> {
     pub fn get_declaration_type(&self, variable_name: &str) -> Option<GenericTypeId> {
         self.identifiers.get(variable_name).map_or_else(
-            || self.parent.and_then(|parent| (*parent).get_declaration_type(variable_name)),
+            || {
+                self.parent
+                    .and_then(|parent| (*parent).get_declaration_type(variable_name))
+            },
             |x| Some(*x),
         )
     }
