@@ -41,4 +41,7 @@ impl TypeSchema {
         }
         constraint_count
     }
+    pub fn add_import(&mut self, identifier_name: String, identifier_typ: GenericTypeId) {
+        self.imports.insert(identifier_name, identifier_typ);
+    }
 }
