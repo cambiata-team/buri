@@ -7,6 +7,12 @@ pub struct Scope<'a, 'b> {
 }
 
 impl<'a, 'b> Scope<'a, 'b> {
+    pub fn new() -> Self {
+        Self {
+            parent: None,
+            identifiers: HashMap::new(),
+        }
+    }
     pub fn get_declaration_type(&self, variable_name: &str) -> Option<GenericTypeId> {
         self.identifiers.get(variable_name).map_or_else(
             || {
