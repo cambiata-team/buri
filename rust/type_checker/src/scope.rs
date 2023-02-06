@@ -16,4 +16,7 @@ impl<'a, 'b> Scope<'a, 'b> {
             |x| Some(*x),
         )
     }
+    pub fn declare_variable(&mut self, variable_name: String, variable_type: GenericTypeId) {
+        self.identifiers.insert(variable_name, variable_type);
+    }
 }
