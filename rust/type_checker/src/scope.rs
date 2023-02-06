@@ -13,6 +13,11 @@ impl<'a, 'b> Scope<'a, 'b> {
             identifiers: HashMap::new(),
         }
     }
+    pub fn new_from(parent: &'a Scope<'b, 'b>) -> Self {
+        let mut new_scope = Scope::new();
+        new_scope.parent = Some(parent);
+        new_scope
+    }
     pub fn get_declaration_type(&self, variable_name: &str) -> Option<GenericTypeId> {
         self.identifiers.get(variable_name).map_or_else(
             || {
