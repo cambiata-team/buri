@@ -41,7 +41,9 @@ impl TypeSchema {
         }
         constraint_count
     }
-    pub fn get_declaration_type(&mut self, variable_name: &str) -> GenericTypeId {
+    /// Creates a new entry in the imports list if the identifier has not been seen before.
+    /// Otherwise returns the `GenericTypeId` of the imported identifier.
+    pub fn add_import(&mut self, variable_name: &str) -> GenericTypeId {
         if let Some(x) = self.imports.get(variable_name) {
             *x
         } else {
