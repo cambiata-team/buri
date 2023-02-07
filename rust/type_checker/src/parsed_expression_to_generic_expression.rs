@@ -178,8 +178,7 @@ fn translate_binary_operator_add_field_lookup_constraints(
 }
 
 fn translate_binary_operator<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: BinaryOperatorNode<'a>,
 ) -> Result<GenericBinaryOperatorExpression<'a>, ()> {
     let type_id = schema.make_id();
@@ -283,8 +282,7 @@ fn translate_binary_operator<'a>(
 }
 
 fn translate_block<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: BlockNode<'a>,
 ) -> Result<GenericBlockExpression<'a>, ()> {
     let type_id = schema.make_id();
@@ -313,8 +311,7 @@ fn translate_block<'a>(
 
 // TODO(aaron) handle variable lookup
 fn translate_identifier<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: IdentifierNode<'a>,
 ) -> GenericIdentifierExpression<'a> {
     let type_id = schema.make_id();
@@ -330,8 +327,7 @@ fn translate_identifier<'a>(
 }
 
 fn translate_if<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: IfNode<'a>,
 ) -> Result<GenericIfExpression<'a>, ()> {
     let type_id = schema.make_id();
@@ -385,8 +381,7 @@ fn translate_if<'a>(
 }
 
 fn translate_integer<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: IntegerNode<'a>,
 ) -> GenericIntegerLiteralExpression<'a> {
     let type_id = schema.make_id();
@@ -402,8 +397,7 @@ fn translate_integer<'a>(
 }
 
 fn translate_list<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: ListNode<'a>,
 ) -> Result<GenericListExpression<'a>, ()> {
     let list_type_id = schema.make_id();
@@ -429,8 +423,7 @@ fn translate_list<'a>(
 }
 
 fn translate_record<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: RecordNode<'a>,
 ) -> Result<GenericRecordExpression<'a>, ()> {
     let list_type_id = schema.make_id();
@@ -466,8 +459,7 @@ fn translate_record<'a>(
 }
 
 fn translate_string<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: StringLiteralNode<'a>,
 ) -> GenericStringLiteralExpression<'a> {
     let type_id = schema.make_id();
@@ -483,8 +475,7 @@ fn translate_string<'a>(
 }
 
 fn translate_tag<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: TagNode<'a>,
 ) -> Result<GenericTagExpression<'a>, ()> {
     let type_id = schema.make_id();
@@ -525,8 +516,7 @@ fn translate_tag<'a>(
 }
 
 fn translate_unary_operator<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+    context: &mut TranslationContext<'a, 'b>,
     node: UnaryOperatorNode<'a>,
 ) -> Result<GenericUnaryOperatorExpression<'a>, ()> {
     let type_id = schema.make_id();
@@ -570,44 +560,42 @@ fn translate_unary_operator<'a>(
     })
 }
 
-pub fn translate_parsed_expression_to_generic_expression<'a>(
-    schema: &mut TypeSchema,
-    substitutions: &mut TypeSchemaSubstitutions,
+pub fn translate_parsed_expression_to_generic_expression<'a, 'b>(
+    context: &mut TranslationContext<'a, 'b>,
     expression: Expression<'a>,
 ) -> Result<GenericExpression<'a>, ()> {
     match expression {
-        Expression::BinaryOperator(node) => translate_binary_operator(schema, substitutions, node)
+        Expression::BinaryOperator(node) => translate_binary_operator(context, node)
             .map(Box::new)
             .map(GenericExpression::BinaryOperator),
-        Expression::Block(node) => translate_block(schema, substitutions, node)
+        Expression::Block(node) => translate_block(context, node)
             .map(Box::new)
             .map(GenericExpression::Block),
         // TODO(aaron): Expression::Function(node) => translate_function(schema, node),
         Expression::FunctionApplicationArguments(_) => Err(()),
         Expression::Identifier(node) => Ok(GenericExpression::Identifier(Box::new(
-            translate_identifier(schema, substitutions, node),
+            translate_identifier(context, node),
         ))),
-        Expression::If(node) => translate_if(schema, substitutions, node)
+        Expression::If(node) => translate_if(context, node)
             .map(Box::new)
             .map(GenericExpression::If),
         Expression::Integer(node) => Ok(GenericExpression::Integer(Box::new(translate_integer(
-            schema,
-            substitutions,
+            context,
             node,
         )))),
-        Expression::List(node) => translate_list(schema, substitutions, node)
+        Expression::List(node) => translate_list(context, node)
             .map(Box::new)
             .map(GenericExpression::List),
-        Expression::Record(node) => translate_record(schema, substitutions, node)
+        Expression::Record(node) => translate_record(context, node)
             .map(Box::new)
             .map(GenericExpression::Record),
         Expression::StringLiteral(node) => Ok(GenericExpression::StringLiteral(Box::new(
-            translate_string(schema, substitutions, node),
+            translate_string(context, node),
         ))),
-        Expression::Tag(node) => translate_tag(schema, substitutions, node)
+        Expression::Tag(node) => translate_tag(context, node)
             .map(Box::new)
             .map(GenericExpression::Tag),
-        Expression::UnaryOperator(node) => translate_unary_operator(schema, substitutions, node)
+        Expression::UnaryOperator(node) => translate_unary_operator(context, node)
             .map(Box::new)
             .map(GenericExpression::UnaryOperator),
         _ => unimplemented!(),
