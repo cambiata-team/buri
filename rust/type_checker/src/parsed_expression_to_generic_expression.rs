@@ -580,8 +580,7 @@ pub fn translate_parsed_expression_to_generic_expression<'a, 'b>(
             .map(Box::new)
             .map(GenericExpression::If),
         Expression::Integer(node) => Ok(GenericExpression::Integer(Box::new(translate_integer(
-            context,
-            node,
+            context, node,
         )))),
         Expression::List(node) => translate_list(context, node)
             .map(Box::new)
