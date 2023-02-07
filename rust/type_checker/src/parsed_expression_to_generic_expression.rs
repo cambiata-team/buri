@@ -22,10 +22,43 @@ use ast::{
 use std::collections::HashMap;
 use typed_ast::PrimitiveType;
 
+pub struct TranslationContextObjects<'b> {
+    schema: TypeSchema,
+    substitutions: TypeSchemaSubstitutions,
+    scope: Scope<'b, 'b>,
+}
+
+impl<'b> TranslationContextObjects<'b> {
+    pub fn new() -> Self {
+        Self {
+            schema: TypeSchema::new(),
+            substitutions: TypeSchemaSubstitutions::new(),
+            scope: Scope::new(),
+        }
+    }
+}
+
 pub struct TranslationContext<'a, 'b> {
     schema: &'a TypeSchema,
     substitutions: &'a TypeSchemaSubstitutions,
     scope: &'a Scope<'b, 'b>,
+}
+
+impl<'a, 'b> TranslationContext<'a, 'b> {
+    pub fn new(objects: &TranslationContextObjects<'b>) -> Self {
+        Self {
+            schema: &objects.schema,
+            substitutions: &objects.substitutions,
+            scope: &objects.scope,
+        }
+    }
+    pub fn sub_scope_from(parent: &TranslationContext<'a, 'b>) -> Self {
+        Self {
+            schema: parent.schema,
+            substitutions: parent.substitutions,
+            scope: &Scope::new_from(parent.scope),
+        }
+    }
 }
 
 const fn constrain_equal_to_num() -> Constraint {
@@ -611,8 +644,11 @@ mod test {
         UnaryOperatorValue,
     };
 
+    /// Struct only used in tests
+    struct ContextObjects {}
+
     /// Helper function, not a test.
-    fn context_objects_for_test<'a, 'b>() -> (TypeSchema, TypeSchemaSubstitutions, Scope<'a, 'b>) {
+    fn context_objects_for_tests<'a, 'b>() -> (TypeSchema, TypeSchemaSubstitutions, Scope<'a, 'b>) {
         (
             TypeSchema::new(),
             TypeSchemaSubstitutions::new(),
@@ -621,16 +657,20 @@ mod test {
     }
 
     /// Helper function, not a test
-    fn context_for_test<'a, 'b>(
+    fn context_for_tests<'a, 'b>(
         objects: &(TypeSchema, TypeSchemaSubstitutions, Scope<'a, 'b>),
     ) -> TranslationContext<'a, 'b> {
-        TranslationContext { schema: &(objects.0), substitutions: &(objects.1), scope: &(objects.2) }
+        TranslationContext {
+            schema: &(objects.0),
+            substitutions: &(objects.1),
+            scope: &(objects.2),
+        }
     }
 
     #[test]
     fn binary_operator_increments_id_counter_by_one_more_than_total_number_of_ids_in_children() {
-        let mut schema = TypeSchema::new();
-        let mut substitutions = TypeSchemaSubstitutions::new();
+        let mut context_objects = context_objects_for_tests();
+        let mut context = context_for_tests(&context_objects);
         let expression = Expression::BinaryOperator(BinaryOperatorNode {
             source: ParserInput::new(""),
             value: BinaryOperatorValue {
@@ -645,12 +685,7 @@ mod test {
                 })),
             },
         });
-        translate_parsed_expression_to_generic_expression(
-            &mut schema,
-            &mut substitutions,
-            expression,
-        )
-        .unwrap();
+        translate_parsed_expression_to_generic_expression(&mut context, expression).unwrap();
         assert_eq!(schema.next_id, 3);
     }
 
