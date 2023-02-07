@@ -23,9 +23,9 @@ use std::collections::HashMap;
 use typed_ast::PrimitiveType;
 
 pub struct TranslationContextObjects<'b> {
-    schema: TypeSchema,
-    substitutions: TypeSchemaSubstitutions,
-    scope: Scope<'b, 'b>,
+    pub schema: TypeSchema,
+    pub substitutions: TypeSchemaSubstitutions,
+    pub scope: Scope<'b, 'b>,
 }
 
 impl<'b> TranslationContextObjects<'b> {
@@ -39,24 +39,24 @@ impl<'b> TranslationContextObjects<'b> {
 }
 
 pub struct TranslationContext<'a, 'b> {
-    schema: &'a TypeSchema,
-    substitutions: &'a TypeSchemaSubstitutions,
-    scope: &'a Scope<'b, 'b>,
+    pub schema: &'a mut TypeSchema,
+    pub substitutions: &'a mut TypeSchemaSubstitutions,
+    pub scope: &'a mut Scope<'b, 'b>,
 }
 
 impl<'a, 'b> TranslationContext<'a, 'b> {
     pub fn new(objects: &TranslationContextObjects<'b>) -> Self {
         Self {
-            schema: &objects.schema,
-            substitutions: &objects.substitutions,
-            scope: &objects.scope,
+            schema: &mut objects.schema,
+            substitutions: &mut objects.substitutions,
+            scope: &mut objects.scope,
         }
     }
-    pub fn sub_scope_from(parent: &TranslationContext<'a, 'b>) -> Self {
+    pub fn sub_scope_from(parent: &'a mut TranslationContext<'b, 'b>) -> Self {
         Self {
             schema: parent.schema,
             substitutions: parent.substitutions,
-            scope: &Scope::new_from(parent.scope),
+            scope: &mut Scope::new_from(parent.scope),
         }
     }
 }
@@ -210,17 +210,14 @@ fn translate_binary_operator_add_field_lookup_constraints(
     Ok(())
 }
 
-fn translate_binary_operator<'a>(
+fn translate_binary_operator<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: BinaryOperatorNode<'a>,
 ) -> Result<GenericBinaryOperatorExpression<'a>, ()> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
-    let translated_left_child = translate_parsed_expression_to_generic_expression(
-        schema,
-        substitutions,
-        *node.value.left_child,
-    )?;
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
+    let translated_left_child =
+        translate_parsed_expression_to_generic_expression(context, *node.value.left_child)?;
     let translated_right_child = match *node.value.right_child {
         Expression::FunctionApplicationArguments(arguments) => {
             let function_arguments: Result<Vec<GenericExpression>, ()> = arguments
@@ -228,20 +225,12 @@ fn translate_binary_operator<'a>(
                 .arguments
                 .into_iter()
                 .map(|expression| {
-                    translate_parsed_expression_to_generic_expression(
-                        schema,
-                        substitutions,
-                        expression,
-                    )
+                    translate_parsed_expression_to_generic_expression(context, expression)
                 })
                 .collect();
             GenericExpression::FunctionArguments(function_arguments?)
         }
-        _ => translate_parsed_expression_to_generic_expression(
-            schema,
-            substitutions,
-            *node.value.right_child,
-        )?,
+        _ => translate_parsed_expression_to_generic_expression(context, *node.value.right_child)?,
     };
     let id_collection = TranslateBinaryOperatorIdCollection {
         type_id,
@@ -258,18 +247,24 @@ fn translate_binary_operator<'a>(
         | BinaryOperatorSymbol::Divide
         | BinaryOperatorSymbol::Modulus
         | BinaryOperatorSymbol::Power => {
-            translate_binary_operator_add_arithmetic_constraints(schema, &id_collection);
+            translate_binary_operator_add_arithmetic_constraints(
+                &mut context.schema,
+                &id_collection,
+            );
         }
         BinaryOperatorSymbol::Concatenate => {
-            translate_binary_operator_add_concatenate_constraints(schema, &id_collection);
+            translate_binary_operator_add_concatenate_constraints(
+                &mut context.schema,
+                &id_collection,
+            );
         }
         BinaryOperatorSymbol::And | BinaryOperatorSymbol::Or => {
-            translate_binary_operator_add_logic_constraints(schema, &id_collection);
+            translate_binary_operator_add_logic_constraints(&mut context.schema, &id_collection);
         }
         BinaryOperatorSymbol::EqualTo | BinaryOperatorSymbol::NotEqualTo => {
             translate_binary_operator_add_equality_constraints(
-                schema,
-                substitutions,
+                &mut context.schema,
+                &mut context.substitutions,
                 &id_collection,
             );
         }
@@ -277,27 +272,30 @@ fn translate_binary_operator<'a>(
         | BinaryOperatorSymbol::LessThanOrEqualTo
         | BinaryOperatorSymbol::GreaterThan
         | BinaryOperatorSymbol::GreaterThanOrEqualTo => {
-            translate_binary_operator_add_comparison_constraints(schema, &id_collection);
+            translate_binary_operator_add_comparison_constraints(
+                &mut context.schema,
+                &id_collection,
+            );
         }
         BinaryOperatorSymbol::FunctionApplication => {
             translate_binary_operator_add_function_application_constraints(
-                schema,
+                &mut context.schema,
                 &id_collection,
                 &translated_right_child,
             )?;
         }
         BinaryOperatorSymbol::MethodLookup => {
             translate_binary_operator_add_method_lookup_constraints(
-                schema,
-                substitutions,
+                &mut context.schema,
+                &mut context.substitutions,
                 &id_collection,
                 &translated_right_child,
             )?;
         }
         BinaryOperatorSymbol::FieldLookup => {
             translate_binary_operator_add_field_lookup_constraints(
-                schema,
-                substitutions,
+                &mut context.schema,
+                &mut context.substitutions,
                 &id_collection,
                 &translated_right_child,
             )?;
@@ -314,23 +312,25 @@ fn translate_binary_operator<'a>(
     })
 }
 
-fn translate_block<'a>(
+fn translate_block<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: BlockNode<'a>,
 ) -> Result<GenericBlockExpression<'a>, ()> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
     let mut element_translations = Vec::new();
     element_translations.reserve_exact(node.value.len());
     for element in node.value {
         let element_translation =
-            translate_parsed_expression_to_generic_expression(schema, substitutions, element)?;
+            translate_parsed_expression_to_generic_expression(context, element)?;
         element_translations.push(element_translation);
     }
     match element_translations.last_mut() {
         None => return Err(()),
         Some(last_element) => {
-            substitutions.set_types_equal(get_generic_type_id(last_element), type_id);
+            context
+                .substitutions
+                .set_types_equal(get_generic_type_id(last_element), type_id);
         }
     }
     Ok(GenericBlockExpression {
@@ -343,12 +343,12 @@ fn translate_block<'a>(
 }
 
 // TODO(aaron) handle variable lookup
-fn translate_identifier<'a>(
+fn translate_identifier<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: IdentifierNode<'a>,
 ) -> GenericIdentifierExpression<'a> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
     GenericIdentifierExpression {
         expression_type: GenericSourcedType {
             type_id,
@@ -359,41 +359,39 @@ fn translate_identifier<'a>(
     }
 }
 
-fn translate_if<'a>(
+fn translate_if<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: IfNode<'a>,
 ) -> Result<GenericIfExpression<'a>, ()> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
-    let translated_condition = translate_parsed_expression_to_generic_expression(
-        schema,
-        substitutions,
-        *node.value.condition,
-    )?;
-    schema.insert(
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
+    let translated_condition =
+        translate_parsed_expression_to_generic_expression(context, *node.value.condition)?;
+    context.schema.insert(
         get_generic_type_id(&translated_condition),
         constrain_at_most_boolean_tag(),
     );
-    let translated_true_path = translate_parsed_expression_to_generic_expression(
-        schema,
-        substitutions,
-        *node.value.path_if_true,
-    )?;
+    let translated_true_path =
+        translate_parsed_expression_to_generic_expression(context, *node.value.path_if_true)?;
     let translated_false_path = if let Some(false_path) = node.value.path_if_false {
-        substitutions.set_types_equal(type_id, get_generic_type_id(&translated_true_path));
+        context
+            .substitutions
+            .set_types_equal(type_id, get_generic_type_id(&translated_true_path));
         let translated_false_path =
-            translate_parsed_expression_to_generic_expression(schema, substitutions, *false_path)?;
-        substitutions.set_types_equal(type_id, get_generic_type_id(&translated_false_path));
+            translate_parsed_expression_to_generic_expression(context, *false_path)?;
+        context
+            .substitutions
+            .set_types_equal(type_id, get_generic_type_id(&translated_false_path));
         Some(translated_false_path)
     } else {
-        schema.insert(
+        context.schema.insert(
             type_id,
             Constraint::HasTag(HasTagConstraint {
                 tag_name: "none".to_owned(),
                 tag_content_types: vec![],
             }),
         );
-        schema.insert(
+        context.schema.insert(
             type_id,
             Constraint::HasTag(HasTagConstraint {
                 tag_name: "some".to_owned(),
@@ -413,13 +411,13 @@ fn translate_if<'a>(
     })
 }
 
-fn translate_integer<'a>(
+fn translate_integer<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: IntegerNode<'a>,
 ) -> GenericIntegerLiteralExpression<'a> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
-    schema.insert(type_id, constrain_equal_to_num());
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
+    context.schema.insert(type_id, constrain_equal_to_num());
     GenericIntegerLiteralExpression {
         expression_type: GenericSourcedType {
             type_id,
@@ -429,21 +427,25 @@ fn translate_integer<'a>(
     }
 }
 
-fn translate_list<'a>(
+fn translate_list<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: ListNode<'a>,
 ) -> Result<GenericListExpression<'a>, ()> {
-    let list_type_id = schema.make_id();
-    substitutions.insert_new_id(list_type_id);
-    let element_type_id = schema.make_id();
-    substitutions.insert_new_id(element_type_id);
-    schema.insert(list_type_id, Constraint::ListOfType(element_type_id));
+    let list_type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(list_type_id);
+    let element_type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(element_type_id);
+    context
+        .schema
+        .insert(list_type_id, Constraint::ListOfType(element_type_id));
     let mut element_translations = Vec::new();
     element_translations.reserve_exact(node.value.len());
     for element in node.value {
         let element_translation =
-            translate_parsed_expression_to_generic_expression(schema, substitutions, element)?;
-        substitutions.set_types_equal(get_generic_type_id(&element_translation), element_type_id);
+            translate_parsed_expression_to_generic_expression(context, element)?;
+        context
+            .substitutions
+            .set_types_equal(get_generic_type_id(&element_translation), element_type_id);
         element_translations.push(element_translation);
     }
     Ok(GenericListExpression {
@@ -455,31 +457,30 @@ fn translate_list<'a>(
     })
 }
 
-fn translate_record<'a>(
+fn translate_record<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: RecordNode<'a>,
 ) -> Result<GenericRecordExpression<'a>, ()> {
-    let list_type_id = schema.make_id();
-    substitutions.insert_new_id(list_type_id);
+    let list_type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(list_type_id);
     let mut element_translations = HashMap::new();
     element_translations.reserve(node.value.len());
     for element in node.value {
-        let field_type_id = schema.make_id();
-        substitutions.insert_new_id(field_type_id);
+        let field_type_id = context.schema.make_id();
+        context.substitutions.insert_new_id(field_type_id);
         let field_name = element.identifier.value.name;
-        schema.insert(
+        context.schema.insert(
             list_type_id,
             Constraint::HasField(HasFieldConstraint {
                 field_name: field_name.clone(),
                 field_type: field_type_id,
             }),
         );
-        let element_translation = translate_parsed_expression_to_generic_expression(
-            schema,
-            substitutions,
-            element.value,
-        )?;
-        substitutions.set_types_equal(get_generic_type_id(&element_translation), field_type_id);
+        let element_translation =
+            translate_parsed_expression_to_generic_expression(context, element.value)?;
+        context
+            .substitutions
+            .set_types_equal(get_generic_type_id(&element_translation), field_type_id);
         element_translations.insert(field_name, element_translation);
     }
     Ok(GenericRecordExpression {
@@ -491,13 +492,13 @@ fn translate_record<'a>(
     })
 }
 
-fn translate_string<'a>(
+fn translate_string<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: StringLiteralNode<'a>,
 ) -> GenericStringLiteralExpression<'a> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
-    schema.insert(type_id, constrain_equal_to_str());
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
+    context.schema.insert(type_id, constrain_equal_to_str());
     GenericStringLiteralExpression {
         expression_type: GenericSourcedType {
             type_id,
@@ -507,19 +508,17 @@ fn translate_string<'a>(
     }
 }
 
-fn translate_tag<'a>(
+fn translate_tag<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: TagNode<'a>,
 ) -> Result<GenericTagExpression<'a>, ()> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
     let translated_content_expressions: Vec<GenericExpression> = match node
         .value
         .contents
         .into_iter()
-        .map(|expression| {
-            translate_parsed_expression_to_generic_expression(schema, substitutions, expression)
-        })
+        .map(|expression| translate_parsed_expression_to_generic_expression(context, expression))
         .collect()
     {
         Ok(x) => x,
@@ -531,7 +530,7 @@ fn translate_tag<'a>(
         .iter()
         .map(get_generic_type_id)
         .collect();
-    schema.insert(
+    context.schema.insert(
         type_id,
         Constraint::HasTag(HasTagConstraint {
             tag_name: node.value.name.value.clone(),
@@ -548,35 +547,29 @@ fn translate_tag<'a>(
     })
 }
 
-fn translate_unary_operator<'a>(
+fn translate_unary_operator<'a, 'b>(
     context: &mut TranslationContext<'a, 'b>,
     node: UnaryOperatorNode<'a>,
 ) -> Result<GenericUnaryOperatorExpression<'a>, ()> {
-    let type_id = schema.make_id();
-    substitutions.insert_new_id(type_id);
+    let type_id = context.schema.make_id();
+    context.substitutions.insert_new_id(type_id);
     let new_child = match node.value.symbol {
         UnaryOperatorSymbol::Not => {
-            schema.insert(type_id, constrain_at_least_true());
-            schema.insert(type_id, constrain_at_least_false());
-            let translated_child = translate_parsed_expression_to_generic_expression(
-                schema,
-                substitutions,
-                *node.value.child,
-            )?;
-            schema.insert(
+            context.schema.insert(type_id, constrain_at_least_true());
+            context.schema.insert(type_id, constrain_at_least_false());
+            let translated_child =
+                translate_parsed_expression_to_generic_expression(context, *node.value.child)?;
+            context.schema.insert(
                 get_generic_type_id(&translated_child),
                 constrain_at_most_boolean_tag(),
             );
             translated_child
         }
         UnaryOperatorSymbol::Negative => {
-            schema.insert(type_id, constrain_equal_to_num());
-            let translated_child = translate_parsed_expression_to_generic_expression(
-                schema,
-                substitutions,
-                *node.value.child,
-            )?;
-            schema.insert(
+            context.schema.insert(type_id, constrain_equal_to_num());
+            let translated_child =
+                translate_parsed_expression_to_generic_expression(context, *node.value.child)?;
+            context.schema.insert(
                 get_generic_type_id(&translated_child),
                 constrain_equal_to_num(),
             );
@@ -644,33 +637,10 @@ mod test {
         UnaryOperatorValue,
     };
 
-    /// Struct only used in tests
-    struct ContextObjects {}
-
-    /// Helper function, not a test.
-    fn context_objects_for_tests<'a, 'b>() -> (TypeSchema, TypeSchemaSubstitutions, Scope<'a, 'b>) {
-        (
-            TypeSchema::new(),
-            TypeSchemaSubstitutions::new(),
-            Scope::new(),
-        )
-    }
-
-    /// Helper function, not a test
-    fn context_for_tests<'a, 'b>(
-        objects: &(TypeSchema, TypeSchemaSubstitutions, Scope<'a, 'b>),
-    ) -> TranslationContext<'a, 'b> {
-        TranslationContext {
-            schema: &(objects.0),
-            substitutions: &(objects.1),
-            scope: &(objects.2),
-        }
-    }
-
     #[test]
     fn binary_operator_increments_id_counter_by_one_more_than_total_number_of_ids_in_children() {
-        let mut context_objects = context_objects_for_tests();
-        let mut context = context_for_tests(&context_objects);
+        let mut context_objects = TranslationContextObjects::new();
+        let mut context = TranslationContext::new(&context_objects);
         let expression = Expression::BinaryOperator(BinaryOperatorNode {
             source: ParserInput::new(""),
             value: BinaryOperatorValue {

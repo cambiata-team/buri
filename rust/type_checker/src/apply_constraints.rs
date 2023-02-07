@@ -2,7 +2,10 @@ use crate::{
     generic_nodes::{
         get_generic_type_id, GenericDocument, GenericSourcedType, GenericVariableDeclaration,
     },
-    parsed_expression_to_generic_expression::translate_parsed_expression_to_generic_expression,
+    parsed_expression_to_generic_expression::{
+        translate_parsed_expression_to_generic_expression, TranslationContext,
+        TranslationContextObjects,
+    },
     type_schema::TypeSchema,
     type_schema_substitutions::TypeSchemaSubstitutions,
 };
@@ -13,11 +16,10 @@ fn translate_variable_declaration<'a>(
     input: TopLevelDeclaration<ParsedNode<'a, VariableDeclarationValue<'a>>>,
 ) -> Result<TopLevelDeclaration<GenericVariableDeclaration<'a>>, ()> {
     let identifier_name = input.declaration.value.identifier.value.name;
-    let mut schema = TypeSchema::new();
-    let mut substitutions = TypeSchemaSubstitutions::new();
+    let mut translation_context_objects = TranslationContextObjects::new();
+    let mut translation_context = TranslationContext::new(&translation_context_objects);
     let expression = translate_parsed_expression_to_generic_expression(
-        &mut schema,
-        &mut substitutions,
+        &mut translation_context,
         input.declaration.value.expression,
     )?;
     let type_id = get_generic_type_id(&expression);
@@ -31,8 +33,8 @@ fn translate_variable_declaration<'a>(
                 identifier_name,
                 expression,
             },
-            schema,
-            substitutions,
+            schema: translation_context_objects.schema,
+            substitutions: translation_context_objects.substitutions,
         },
         is_exported: input.is_exported,
     })
