@@ -611,6 +611,22 @@ mod test {
         UnaryOperatorValue,
     };
 
+    /// Helper function, not a test.
+    fn context_objects_for_test<'a, 'b>() -> (TypeSchema, TypeSchemaSubstitutions, Scope<'a, 'b>) {
+        (
+            TypeSchema::new(),
+            TypeSchemaSubstitutions::new(),
+            Scope::new(),
+        )
+    }
+
+    /// Helper function, not a test
+    fn context_for_test<'a, 'b>(
+        objects: &(TypeSchema, TypeSchemaSubstitutions, Scope<'a, 'b>),
+    ) -> TranslationContext<'a, 'b> {
+        TranslationContext { schema: &(objects.0), substitutions: &(objects.1), scope: &(objects.2) }
+    }
+
     #[test]
     fn binary_operator_increments_id_counter_by_one_more_than_total_number_of_ids_in_children() {
         let mut schema = TypeSchema::new();
