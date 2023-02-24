@@ -201,15 +201,23 @@ fn translate_binary_operator_add_method_lookup_constraints(
         GenericExpression::Identifier(identifier_expression) => identifier_expression.name.clone(),
         _ => return Err("MethodLookupDoesNotUseIdentifier".to_owned()),
     };
-    schema.add_constraint(
-        id_collection.left_child_id,
-        Constraint::HasMethod(HasMethodConstraint {
-            method_name,
-            method_type: id_collection.right_child_id,
-        }),
-    )?;
-    schema.set_equal_to_canonical_type(id_collection.type_id, id_collection.right_child_id)?;
-    Ok(())
+    match schema
+        .add_constraint(
+            id_collection.left_child_id,
+            Constraint::HasMethod(HasMethodConstraint {
+                method_name,
+                method_type: id_collection.right_child_id,
+            }),
+        )
+        .and_then(
+            schema.set_equal_to_canonical_type(id_collection.type_id, id_collection.right_child_id),
+        ) {
+        Ok(x) => Ok(x),
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddMethodLookupConstraints: ",
+            &error,
+        )),
+    }
 }
 
 fn translate_binary_operator_add_field_lookup_constraints(
