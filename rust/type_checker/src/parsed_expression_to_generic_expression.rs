@@ -132,10 +132,20 @@ fn translate_binary_operator_add_equality_constraints(
     schema: &mut TypeSchema,
     id_collection: &TranslateBinaryOperatorIdCollection,
 ) -> Result<(), String> {
-    schema.add_constraint(id_collection.type_id, constrain_at_most_boolean_tag())?;
-    schema
-        .set_equal_to_canonical_type(id_collection.left_child_id, id_collection.right_child_id)?;
-    Ok(())
+    match schema
+        .add_constraint(id_collection.type_id, constrain_at_most_boolean_tag())
+        .and_then(|_| {
+            schema.set_equal_to_canonical_type(
+                id_collection.left_child_id,
+                id_collection.right_child_id,
+            )
+        }) {
+        Ok(x) => Ok(x),
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddEqualityConstraints",
+            &error,
+        )),
+    }
 }
 
 fn translate_binary_operator_add_comparison_constraints(
