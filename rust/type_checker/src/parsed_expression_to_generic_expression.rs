@@ -248,7 +248,7 @@ fn translate_binary_operator_add_field_lookup_constraints(
     }
 }
 
-fn translate_binary_operator<'a>(
+fn translate_binary_operator_impl<'a>(
     schema: &mut TypeSchema,
     node: BinaryOperatorNode<'a>,
 ) -> Result<GenericBinaryOperatorExpression<'a>, String> {
@@ -343,6 +343,16 @@ fn translate_binary_operator<'a>(
         left_child: translated_left_child,
         right_child: translated_right_child,
     })
+}
+
+fn translate_binary_operator<'a>(
+    schema: &mut TypeSchema,
+    node: BinaryOperatorNode<'a>,
+) -> Result<GenericBinaryOperatorExpression<'a>, String> {
+    match translate_binary_operator_impl(schema, node) {
+        Ok(x) => Ok(x),
+        Err(error) => Err(add_error_prefix("TranslateBinaryOperator: ", &error)),
+    }
 }
 
 fn translate_block<'a>(
