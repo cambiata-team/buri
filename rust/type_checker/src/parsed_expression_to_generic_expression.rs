@@ -355,7 +355,7 @@ fn translate_binary_operator<'a>(
     }
 }
 
-fn translate_block<'a>(
+fn translate_block_impl<'a>(
     schema: &mut TypeSchema,
     node: BlockNode<'a>,
 ) -> Result<GenericBlockExpression<'a>, String> {
@@ -382,6 +382,16 @@ fn translate_block<'a>(
         },
         contents: element_translations,
     })
+}
+
+fn translate_block<'a>(
+    schema: &mut TypeSchema,
+    node: BlockNode<'a>,
+) -> Result<GenericBlockExpression<'a>, String> {
+    match translate_block_impl(schema, node) {
+        Ok(x) => Ok(x),
+        Err(error) => Err(add_error_prefix("TranslateBlock: ", &error)),
+    }
 }
 
 pub fn translate_declaration<'a>(
