@@ -81,11 +81,10 @@ fn translate_binary_operator_add_arithmetic_constraints(
         .and_then(|_| schema.add_constraint(id_collection.right_child_id, constrain_equal_to_num()))
     {
         Ok(x) => Ok(x),
-        Err(error) => {
-            let mut message = "TranslateBinaryOperatorAddArithmeticConstraints: ".to_owned();
-            message.push_str(error.as_str());
-            Err(message)
-        }
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddArithmeticConstraints: ",
+            &error,
+        )),
     }
 }
 
@@ -99,11 +98,10 @@ fn translate_binary_operator_add_concatenate_constraints(
         .and_then(|_| schema.add_constraint(id_collection.right_child_id, constrain_equal_to_str()))
     {
         Ok(x) => Ok(x),
-        Err(error) => {
-            let mut message = "TranslateBinaryOperatorAddConcatenateConstraints: ".to_owned();
-            message.push_str(error.as_str());
-            Err(message)
-        }
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddConcatenateConstraints: ",
+            &error,
+        )),
     }
 }
 
@@ -123,11 +121,10 @@ fn translate_binary_operator_add_logic_constraints(
             )
         }) {
         Ok(x) => Ok(x),
-        Err(error) => {
-            let mut message = "TranslateBinaryOperatorAddLogicConstraints: ".to_owned();
-            message.push_str(error.as_str());
-            Err(message)
-        }
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddLogicConstraints: ",
+            &error,
+        )),
     }
 }
 
