@@ -69,10 +69,18 @@ fn translate_binary_operator_add_arithmetic_constraints(
     schema: &mut TypeSchema,
     id_collection: &TranslateBinaryOperatorIdCollection,
 ) -> Result<(), String> {
-    schema.add_constraint(id_collection.type_id, constrain_equal_to_num())?;
-    schema.add_constraint(id_collection.left_child_id, constrain_equal_to_num())?;
-    schema.add_constraint(id_collection.right_child_id, constrain_equal_to_num())?;
-    Ok(())
+    match schema
+        .add_constraint(id_collection.type_id, constrain_equal_to_num())
+        .and_then(|_| schema.add_constraint(id_collection.left_child_id, constrain_equal_to_num()))
+        .and_then(|_| schema.add_constraint(id_collection.right_child_id, constrain_equal_to_num()))
+    {
+        Ok(x) => Ok(x),
+        Err(error) => {
+            let mut message = "TranslateBinaryOperatorAddArithmeticConstraints: ".to_owned();
+            message.push_str(error.as_str());
+            Err(message)
+        }
+    }
 }
 
 fn translate_binary_operator_add_concatenate_constraints(
