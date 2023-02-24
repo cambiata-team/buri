@@ -209,9 +209,9 @@ fn translate_binary_operator_add_method_lookup_constraints(
                 method_type: id_collection.right_child_id,
             }),
         )
-        .and_then(
-            schema.set_equal_to_canonical_type(id_collection.type_id, id_collection.right_child_id),
-        ) {
+        .and_then(|_| {
+            schema.set_equal_to_canonical_type(id_collection.type_id, id_collection.right_child_id)
+        }) {
         Ok(x) => Ok(x),
         Err(error) => Err(add_error_prefix(
             "TranslateBinaryOperatorAddMethodLookupConstraints: ",
@@ -229,15 +229,23 @@ fn translate_binary_operator_add_field_lookup_constraints(
         GenericExpression::Identifier(identifier_expression) => identifier_expression.name.clone(),
         _ => return Err("FieldLookupDoesNotUseIdentifier".to_owned()),
     };
-    schema.set_equal_to_canonical_type(id_collection.right_child_id, id_collection.type_id)?;
-    schema.add_constraint(
-        id_collection.left_child_id,
-        Constraint::HasField(HasFieldConstraint {
-            field_name,
-            field_type: id_collection.right_child_id,
-        }),
-    )?;
-    Ok(())
+    match schema
+        .set_equal_to_canonical_type(id_collection.right_child_id, id_collection.type_id)
+        .and_then(|_| {
+            schema.add_constraint(
+                id_collection.left_child_id,
+                Constraint::HasField(HasFieldConstraint {
+                    field_name,
+                    field_type: id_collection.right_child_id,
+                }),
+            )
+        }) {
+        Ok(x) => Ok(x),
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddFieldLookupConstraints: ",
+            &error,
+        )),
+    }
 }
 
 fn translate_binary_operator<'a>(
