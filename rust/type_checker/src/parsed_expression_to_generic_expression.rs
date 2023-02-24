@@ -142,7 +142,7 @@ fn translate_binary_operator_add_equality_constraints(
         }) {
         Ok(x) => Ok(x),
         Err(error) => Err(add_error_prefix(
-            "TranslateBinaryOperatorAddEqualityConstraints",
+            "TranslateBinaryOperatorAddEqualityConstraints: ",
             &error,
         )),
     }
@@ -152,11 +152,18 @@ fn translate_binary_operator_add_comparison_constraints(
     schema: &mut TypeSchema,
     id_collection: &TranslateBinaryOperatorIdCollection,
 ) -> Result<(), String> {
-    schema.add_constraint(id_collection.type_id, constrain_at_least_true())?;
-    schema.add_constraint(id_collection.type_id, constrain_at_least_false())?;
-    schema.add_constraint(id_collection.left_child_id, constrain_equal_to_num())?;
-    schema.add_constraint(id_collection.right_child_id, constrain_equal_to_num())?;
-    Ok(())
+    match schema
+        .add_constraint(id_collection.type_id, constrain_at_least_true())
+        .and_then(|_| schema.add_constraint(id_collection.type_id, constrain_at_least_false()))
+        .and_then(|_| schema.add_constraint(id_collection.left_child_id, constrain_equal_to_num()))
+        .and_then(|_| schema.add_constraint(id_collection.right_child_id, constrain_equal_to_num()))
+    {
+        Ok(x) => Ok(x),
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddComparisonConstraints: ",
+            &error,
+        )),
+    }
 }
 
 fn translate_binary_operator_add_function_application_constraints(
