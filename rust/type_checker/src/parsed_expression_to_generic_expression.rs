@@ -25,6 +25,12 @@ use ast::{
 use std::collections::HashMap;
 use typed_ast::PrimitiveType;
 
+fn add_error_prefix(prefix: &str, error: &str) -> String {
+    let mut message = prefix.to_owned();
+    message.push_str(error);
+    message
+}
+
 const fn constrain_equal_to_num() -> Constraint {
     Constraint::EqualToPrimitive(PrimitiveType::Num)
 }
