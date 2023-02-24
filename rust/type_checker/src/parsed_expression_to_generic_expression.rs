@@ -177,14 +177,19 @@ fn translate_binary_operator_add_function_application_constraints(
         }
         _ => return Err("FunctionApplicationDoesNotUseFunctionArguments".to_owned()),
     };
-    schema.add_constraint(
+    match schema.add_constraint(
         id_collection.left_child_id,
         Constraint::HasFunctionShape(HasFunctionShape {
             argument_types,
             return_type: id_collection.type_id,
         }),
-    )?;
-    Ok(())
+    ) {
+        Ok(x) => Ok(x),
+        Err(error) => Err(add_error_prefix(
+            "TranslateBinaryOperatorAddFunctionApplicationConstraints: ",
+            &error,
+        )),
+    }
 }
 
 fn translate_binary_operator_add_method_lookup_constraints(
