@@ -49,12 +49,8 @@ fn blockless_if<'a>(
                 )),
                 binary_operator_expression(context.disallow_newlines_in_expressions()),
             )),
-            cond(
-                !(context.allow_newlines_in_expressions),
-                tuple((space0, alt((newline, eof)))),
-            ),
         )),
-        |(_, expression_if_true, maybe_expression_if_false, _)| IfElsePair {
+        |(_, expression_if_true, maybe_expression_if_false)| IfElsePair {
             path_if_true: expression_if_true,
             path_if_false: maybe_expression_if_false,
         },
@@ -261,7 +257,7 @@ mod test {
 
     #[test]
     fn basic_if_statement_parses_when_disallowing_multiline_expressions() {
-        let input = ParserInput::new("if 1 == 2 do 3\n");
+        let input = ParserInput::new("if 1 == 2 do 3");
         let result = if_statement(ExpressionContext::new())(input);
         let (remainder, _) = result.unwrap();
         assert_eq!(remainder, "");
@@ -319,7 +315,7 @@ mod test {
         let input = ParserInput::new("if 1 == 2 do 3\nelse\n    4");
         let result = if_statement(ExpressionContext::new())(input);
         let (remainder, _) = result.unwrap();
-        assert_eq!(remainder, "else\n    4");
+        assert_eq!(remainder, "\nelse\n    4");
     }
 
     #[test]
