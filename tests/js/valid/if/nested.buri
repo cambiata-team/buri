@@ -1,0 +1,8 @@
+magic_number = 123
+
+@export
+magic_if = if magic_number > 100 do
+    if magic_number > 200 do "super magic" else "normal magic"
+-- empty line
+else
+    "not magic"
