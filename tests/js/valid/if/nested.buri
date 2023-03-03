@@ -5,12 +5,3 @@ magic_if_1 = if magic_number > 100 do
     if magic_number > 200 do "super magic" else "normal magic"
 else
     "not magic"
-
-@export
-magic_if_2 = if magic_number > 100 do
-    if magic_number > 200 do
-        "super magic"
-    else
-        "normal magic"
-else
-    "not magic"

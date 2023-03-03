@@ -341,4 +341,13 @@ mod test {
         let (remainder, _) = result.unwrap();
         assert_eq!(remainder, "");
     }
+
+    #[test]
+    fn when_disallowing_multiline_expressions_if_can_contain_blocks() {
+        let input =
+            ParserInput::new("if x > 1 do\n    z = y + 1\n    z\nelse\n    z = y - 1\n    z");
+        let result = if_statement(ExpressionContext::new())(input);
+        let (remainder, _) = result.unwrap();
+        assert_eq!(remainder, "");
+    }
 }
