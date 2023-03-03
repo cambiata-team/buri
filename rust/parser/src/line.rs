@@ -8,6 +8,19 @@ use nom::{
     sequence::{delimited, preceded, tuple},
 };
 
+pub fn line_without_newline<'a>(
+    context: ExpressionContext,
+) -> impl FnMut(ParserInput<'a>) -> IResult<'a, Option<Expression<'a>>> {
+    alt((
+        delimited(
+            indent_exact(context.indentation),
+            map(expression(context.disallow_newlines_in_expressions()), Some),
+            space0,
+        ),
+        preceded(space0, success(None)),
+    ))
+}
+
 /// Parse a line of code.
 /// Return `None` if the line does not contain any statements.
 /// Return `Some(Line)` with the content of the line otherwise.

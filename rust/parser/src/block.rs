@@ -1,9 +1,9 @@
-use crate::{line::line, ExpressionContext};
+use crate::{line::line_without_newline, newline::newline, ExpressionContext};
 use ast::BlockNode;
 use ast::{IResult, ParserInput};
 use nom::{
     combinator::{consumed, map, verify},
-    multi::many1,
+    multi::separated_list0,
 };
 
 pub fn block<'a>(
@@ -11,7 +11,7 @@ pub fn block<'a>(
 ) -> impl FnMut(ParserInput<'a>) -> IResult<'a, BlockNode<'a>> {
     verify(
         map(
-            consumed(many1(line(context))),
+            consumed(separated_list0(newline, line_without_newline(context))),
             |(source, maybe_expressions)| {
                 let mut nonempty_lines = Vec::new();
                 for maybe_expression in maybe_expressions {

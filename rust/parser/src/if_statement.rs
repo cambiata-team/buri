@@ -344,8 +344,36 @@ mod test {
 
     #[test]
     fn when_disallowing_multiline_expressions_if_can_contain_blocks() {
+        let input = ParserInput::new("if x > 1 do\n    y + 1\n    z\nelse\n    y - 1\n    z");
+        let result = if_statement(ExpressionContext::new())(input);
+        let (remainder, _) = result.unwrap();
+        assert_eq!(remainder, "");
+    }
+
+    #[test]
+    fn when_disallowing_multiline_expressions_if_can_contain_blocks_with_nested_if() {
         let input =
-            ParserInput::new("if x > 1 do\n    z = y + 1\n    z\nelse\n    z = y - 1\n    z");
+            ParserInput::new("if x > 1 do\n    y + 1\n    if x < 10 do\n        z + 10\n    z\nelse\n    y - 1\n    z");
+        let result = if_statement(ExpressionContext::new())(input);
+        let (remainder, _) = result.unwrap();
+        assert_eq!(remainder, "");
+    }
+
+    #[test]
+    fn when_disallowing_multiline_expressions_if_can_contain_blocks_with_nested_if_at_beginning() {
+        let input = ParserInput::new(
+            "if x > 1 do\n    if x < 10 do\n        z + 10\n    z\nelse\n    y - 1\n    z",
+        );
+        let result = if_statement(ExpressionContext::new())(input);
+        let (remainder, _) = result.unwrap();
+        assert_eq!(remainder, "");
+    }
+
+    #[test]
+    fn when_disallowing_multiline_expressions_if_can_contain_blocks_with_nested_if_at_end() {
+        let input = ParserInput::new(
+            "if x > 1 do\n    y + 1\n    if x < 10 do\n        z + 10\nelse\n    y - 1\n    z",
+        );
         let result = if_statement(ExpressionContext::new())(input);
         let (remainder, _) = result.unwrap();
         assert_eq!(remainder, "");
