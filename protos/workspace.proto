@@ -3,6 +3,6 @@ syntax = "proto3";
 option go_package = "/protos";
 
 message WorkspaceFile {
-    string name = 1;
-    string buriVersion = 2;
+  string name = 1;
+  string buriVersion = 2;
 }
