@@ -23,7 +23,10 @@ var initCmd = &cobra.Command{
 			fmt.Fprint(cmd.OutOrStdout(), InitializationError)
 			return
 		}
-		workspace := &protos.WorkspaceFile{Name: Name, BuriVersion: "nightly"}
+		workspace := &protos.WorkspaceFile{BuriVersion: "nightly"}
+		if Name != "" {
+			workspace.Name = Name
+		}
 		workspaceFile := prototext.Format(workspace)
 
 		if _, err := os.Stat(workspaceFileName); err == nil {
@@ -63,8 +66,4 @@ func init() {
 	// is called directly, e.g.:
 	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	initCmd.Flags().StringVarP(&Name, "name", "n", "", "Name of the project")
-	error := initCmd.MarkFlagRequired("name")
-	if error != nil {
-		InitializationError = error
-	}
 }
