@@ -3,67 +3,61 @@ package commands
 import (
 	"buri/protos"
 	"fmt"
-	"os"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	prototext "google.golang.org/protobuf/encoding/prototext"
 )
 
-var Name string
 var InitializationError error
 
 const workspaceFileName = "WORKSPACE"
 
-// initCmd represents the init command
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize a new Buri workspace",
-	Run: func(cmd *cobra.Command, args []string) {
-		if InitializationError != nil {
-			fmt.Fprint(cmd.OutOrStdout(), InitializationError)
-			return
-		}
-		workspace := &protos.WorkspaceFile{BuriVersion: "nightly"}
-		if Name != "" {
-			workspace.Name = Name
-		}
-		workspaceFile := prototext.Format(workspace)
+func NewInitCommand(fs afero.Fs) cobra.Command {
+	command := cobra.Command{
+		Use:   "init",
+		Short: "Initialize a new Buri workspace",
+		Run: func(cmd *cobra.Command, args []string) {
+			if InitializationError != nil {
+				fmt.Fprint(cmd.OutOrStdout(), InitializationError)
+				return
+			}
+			name, _ := cmd.Flags().GetString("name")
+			workspace := &protos.WorkspaceFile{BuriVersion: "nightly"}
+			if name != "" {
+				workspace.Name = name
+			}
+			workspaceFile := prototext.Format(workspace)
 
-		if _, err := os.Stat(workspaceFileName); err == nil {
-			fmt.Fprint(cmd.OutOrStdout(), "error: Could not create a new workspace because workspace file already exists")
-			return
-		}
+			if _, err := fs.Stat(workspaceFileName); err == nil {
+				fmt.Fprint(cmd.OutOrStdout(), "error: Could not create a new workspace because workspace file already exists")
+				return
+			}
 
-		f, err := os.Create(workspaceFileName)
+			f, err := fs.Create(workspaceFileName)
 
-		if err != nil {
-			fmt.Fprint(cmd.OutOrStdout(), err.Error())
-			return
-		}
-		defer f.Close()
+			if err != nil {
+				fmt.Fprint(cmd.OutOrStdout(), err.Error())
+				return
+			}
+			defer f.Close()
 
-		_, err2 := f.WriteString(workspaceFile)
+			_, err2 := f.WriteString(workspaceFile)
 
-		if err2 != nil {
-			fmt.Fprint(cmd.OutOrStdout(), err2.Error())
-			return
-		}
+			if err2 != nil {
+				fmt.Fprint(cmd.OutOrStdout(), err2.Error())
+				return
+			}
 
-		fmt.Fprint(cmd.OutOrStdout(), "done")
-	},
+			fmt.Fprint(cmd.OutOrStdout(), "done")
+		},
+	}
+
+	command.Flags().StringP("name", "n", "", "Name of the project")
+	return command
 }
 
 func init() {
-	rootCmd.AddCommand(initCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// initCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	initCmd.Flags().StringVarP(&Name, "name", "n", "", "Name of the project")
+	initCmd := NewInitCommand(afero.NewOsFs())
+	rootCmd.AddCommand(&initCmd)
 }
