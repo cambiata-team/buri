@@ -1,7 +1,7 @@
 package main
 
-import "buri/cmd"
+import "buri/cli/commands"
 
 func main() {
-	cmd.Execute()
+	commands.Execute()
 }
