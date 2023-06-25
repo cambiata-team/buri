@@ -1,20 +1,46 @@
 package cmd
 
 import (
+	"buri/protos"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/spf13/cobra"
+	prototext "google.golang.org/protobuf/encoding/prototext"
 )
 
 var Name string
+
+const workspaceFileName = "WORKSPACE"
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize a new Buri workspace",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("init called")
-		fmt.Println(Name)
+		workspace := &protos.WorkspaceFile{Name: Name, BuriVersion: "nightly"}
+		workspaceFile := prototext.Format(workspace)
+
+		if _, err := os.Stat(workspaceFileName); err == nil {
+			log.SetFlags(0)
+			log.Fatal("Error: Could not create a new workspace because workspace file already exists.")
+		}
+
+		f, err := os.Create(workspaceFileName)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+
+		_, err2 := f.WriteString(workspaceFile)
+
+		if err2 != nil {
+			log.Fatal(err2)
+		}
+
+		fmt.Println("done")
 	},
 }
 
