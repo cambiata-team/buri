@@ -4,7 +4,11 @@ updates:
     directory: /
     schedule:
       interval: daily
+    assignees:
+      - "Nick-Mazuk"
   - package-ecosystem: github-actions
     directory: .github/workflows
     schedule:
       interval: daily
+    assignees:
+      - "Nick-Mazuk"
