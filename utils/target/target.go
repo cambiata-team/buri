@@ -29,6 +29,20 @@ func (t Target) BuildFileLocation() string {
 	return strings.Join(t.Directories[:], "/") + "/BUILD"
 }
 
+func (t Target) ToString() string {
+	result := ""
+	if !t.IsRelative {
+		result += "//"
+	}
+	result += strings.Join(t.Directories[:], "/")
+	if t.Name.Kind == Specific {
+		result += ":" + t.Name.Value
+	} else {
+		result += ":..."
+	}
+	return result
+}
+
 func isValidPart(part string) bool {
 	if part == "" {
 		return false

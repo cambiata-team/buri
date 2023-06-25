@@ -36,10 +36,12 @@ func ResolveDepGraph(thorTarget *target.Target) (DepGraphNode, error) {
 	if thorTarget.Name.Kind == target.Recursive {
 		return head, errors.New("building recursive targets is not supported yet")
 	}
+	allNodes := make(map[string]*DepGraphNode)
 	stack := []*DepGraphNode{}
 	for len(stack) > 0 {
 		currentNode := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
+
 		buildFile := protos.BuildFile{}
 		err := getBuildFileFromTarget(&buildFile, &currentNode.Target)
 		if err != nil {
@@ -53,10 +55,15 @@ func ResolveDepGraph(thorTarget *target.Target) (DepGraphNode, error) {
 					if err != nil {
 						return head, err
 					}
+					targetString := dependencyTarget.ToString()
+					if _, nodeExists := allNodes[targetString]; nodeExists {
+						continue
+					}
 					node := DepGraphNode{
 						Target: dependencyTarget,
 					}
 					stack = append(stack, &node)
+					allNodes[targetString] = &node
 				}
 				break
 			}

@@ -142,3 +142,22 @@ func TestBuildFileLocation(t *testing.T) {
 		assert.Equal(parsed.BuildFileLocation(), expected, fmt.Sprint("expected ", target, " to have build file location ", expected, " got ", parsed.BuildFileLocation()))
 	}
 }
+
+func TestTargetString(t *testing.T) {
+	assert := assert.New(t)
+	tests := [][2]string{
+		{"//foo", "//foo:foo"},
+		{"//foo:bar", "//foo:bar"},
+		{"foo", "foo:foo"},
+		{"foo:bar", "foo:bar"},
+		{"//foo/bar", "//foo/bar:bar"},
+	}
+	for _, test := range tests {
+		target := test[0]
+		expected := test[1]
+		parsed, err := ParseTarget(target)
+
+		assert.Nil(err, fmt.Sprint("expected ", target, " to be valid, got error ", err))
+		assert.Equal(parsed.ToString(), expected, fmt.Sprint("expected ", target, " to have string ", expected, " got ", parsed.ToString()))
+	}
+}
