@@ -15,7 +15,7 @@ func TestFormatCommand(t *testing.T) {
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"format"})
 
-	assert.NotNil(rootCmd.Execute())
+	assert.Nil(rootCmd.Execute())
 
 	out, err := io.ReadAll(b)
 	assert.NotNil(err)

@@ -15,7 +15,7 @@ func TestBuildCommand(t *testing.T) {
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"build"})
 
-	assert.NotNil(rootCmd.Execute())
+	assert.Nil(rootCmd.Execute())
 
 	out, err := io.ReadAll(b)
 	assert.NotNil(err)
