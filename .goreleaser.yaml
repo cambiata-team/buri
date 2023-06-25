@@ -1,3 +1,4 @@
+project_name: buri
 before:
   hooks:
     # You may remove this if you don't use go modules.
