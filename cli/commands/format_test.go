@@ -18,6 +18,6 @@ func TestFormatCommand(t *testing.T) {
 	assert.Nil(rootCmd.Execute())
 
 	out, err := io.ReadAll(b)
-	assert.NotNil(err)
+	assert.Nil(err)
 	assert.Equal("format called", string(out))
 }
