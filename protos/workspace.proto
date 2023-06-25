@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message WorkspaceFile {
+    string name = 0;
+    string buriVersion = 1;
+}
