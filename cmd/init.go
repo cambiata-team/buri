@@ -3,7 +3,6 @@ package cmd
 import (
 	"buri/protos"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -23,24 +22,26 @@ var initCmd = &cobra.Command{
 		workspaceFile := prototext.Format(workspace)
 
 		if _, err := os.Stat(workspaceFileName); err == nil {
-			log.SetFlags(0)
-			log.Fatal("Error: Could not create a new workspace because workspace file already exists.")
+			fmt.Fprint(cmd.OutOrStdout(), "error: Could not create a new workspace because workspace file already exists")
+			return
 		}
 
 		f, err := os.Create(workspaceFileName)
 
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprint(cmd.OutOrStdout(), err.Error())
+			return
 		}
 		defer f.Close()
 
 		_, err2 := f.WriteString(workspaceFile)
 
 		if err2 != nil {
-			log.Fatal(err2)
+			fmt.Fprint(cmd.OutOrStdout(), err2.Error())
+			return
 		}
 
-		fmt.Println("done")
+		fmt.Fprint(cmd.OutOrStdout(), "done")
 	},
 }
 

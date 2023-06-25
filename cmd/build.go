@@ -10,8 +10,9 @@ import (
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build a target.",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("build called")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Fprint(cmd.OutOrStdout(), "build called")
+		return nil
 	},
 }
 
