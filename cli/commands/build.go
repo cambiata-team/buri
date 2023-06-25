@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"fmt"
+	"buri/cli/build"
 
 	"github.com/spf13/cobra"
 )
@@ -10,9 +10,9 @@ import (
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build a target.",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Fprint(cmd.OutOrStdout(), "build called")
-		return nil
+		return build.BuildTarget(args[0])
 	},
 }
 

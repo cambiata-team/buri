@@ -22,7 +22,7 @@ func TestInvalidTargets(t *testing.T) {
 		"...:foo",
 	}
 	for _, target := range targets {
-		_, err := parseTarget(target)
+		_, err := ParseTarget(target)
 
 		assert.NotNil(err, fmt.Sprint("expected ", target, " to be invalid"))
 	}
@@ -39,10 +39,10 @@ func TestRecursiveTargets(t *testing.T) {
 		"foo/bar:...",
 	}
 	for _, target := range targets {
-		parsed, err := parseTarget(target)
+		parsed, err := ParseTarget(target)
 
 		assert.Nil(err, fmt.Sprint("expected ", target, " to be valid, got error ", err))
-		assert.Equal(parsed.name.kind, Recursive, fmt.Sprint("expected ", target, " to be recursive"))
+		assert.Equal(parsed.Name.Kind, Recursive, fmt.Sprint("expected ", target, " to be recursive"))
 	}
 }
 
@@ -60,11 +60,11 @@ func TestSpecificTargets(t *testing.T) {
 	for _, test := range tests {
 		target := test[0]
 		expected := test[1]
-		parsed, err := parseTarget(target)
+		parsed, err := ParseTarget(target)
 
 		assert.Nil(err, fmt.Sprint("expected ", target, " to be valid, got error ", err))
-		assert.Equal(parsed.name.kind, Specific, fmt.Sprint("expected ", target, " to be specific"))
-		assert.Equal(parsed.name.value, expected, fmt.Sprint("expected ", target, " to have value ", expected, " got ", parsed.name.value))
+		assert.Equal(parsed.Name.Kind, Specific, fmt.Sprint("expected ", target, " to be specific"))
+		assert.Equal(parsed.Name.Value, expected, fmt.Sprint("expected ", target, " to have value ", expected, " got ", parsed.Name.Value))
 	}
 }
 
@@ -78,10 +78,10 @@ func TestAbsoluteTargets(t *testing.T) {
 		"//foo/bar:bar",
 	}
 	for _, target := range targets {
-		parsed, err := parseTarget(target)
+		parsed, err := ParseTarget(target)
 
 		assert.Nil(err, fmt.Sprint("expected ", target, " to be valid, got error ", err))
-		assert.False(parsed.isRelative, fmt.Sprint("expected ", target, " to be absolute"))
+		assert.False(parsed.IsRelative, fmt.Sprint("expected ", target, " to be absolute"))
 	}
 }
 
@@ -95,10 +95,10 @@ func TestRelativeTargets(t *testing.T) {
 		"foo/bar:bar",
 	}
 	for _, target := range targets {
-		parsed, err := parseTarget(target)
+		parsed, err := ParseTarget(target)
 
 		assert.Nil(err, fmt.Sprint("expected ", target, " to be valid, got error ", err))
-		assert.True(parsed.isRelative, fmt.Sprint("expected ", target, " to be relative"))
+		assert.True(parsed.IsRelative, fmt.Sprint("expected ", target, " to be relative"))
 	}
 }
 
@@ -116,10 +116,29 @@ func TestTargetDirectories(t *testing.T) {
 	for _, test := range tests {
 		target := test[0][0]
 		expectedDirectories := test[1]
-		parsed, err := parseTarget(target)
+		parsed, err := ParseTarget(target)
 
 		assert.Nil(err, fmt.Sprint("expected ", target, " to be valid, got error ", err))
-		assert.EqualValues(parsed.directories, expectedDirectories)
+		assert.EqualValues(parsed.Directories, expectedDirectories)
 
+	}
+}
+
+func TestBuildFileLocation(t *testing.T) {
+	assert := assert.New(t)
+	tests := [][2]string{
+		{"//foo", "foo/BUILD"},
+		{"//foo:bar", "foo/BUILD"},
+		{"foo", "foo/BUILD"},
+		{"foo:bar", "foo/BUILD"},
+		{"//foo/bar", "foo/bar/BUILD"},
+	}
+	for _, test := range tests {
+		target := test[0]
+		expected := test[1]
+		parsed, err := ParseTarget(target)
+
+		assert.Nil(err, fmt.Sprint("expected ", target, " to be valid, got error ", err))
+		assert.Equal(parsed.BuildFileLocation(), expected, fmt.Sprint("expected ", target, " to have build file location ", expected, " got ", parsed.BuildFileLocation()))
 	}
 }
