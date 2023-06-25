@@ -10,6 +10,7 @@ import (
 )
 
 var Name string
+var InitializationError error
 
 const workspaceFileName = "WORKSPACE"
 
@@ -18,6 +19,10 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize a new Buri workspace",
 	Run: func(cmd *cobra.Command, args []string) {
+		if InitializationError != nil {
+			fmt.Fprint(cmd.OutOrStdout(), InitializationError)
+			return
+		}
 		workspace := &protos.WorkspaceFile{Name: Name, BuriVersion: "nightly"}
 		workspaceFile := prototext.Format(workspace)
 
@@ -58,5 +63,8 @@ func init() {
 	// is called directly, e.g.:
 	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	initCmd.Flags().StringVarP(&Name, "name", "n", "", "Name of the project")
-	initCmd.MarkFlagRequired("name")
+	error := initCmd.MarkFlagRequired("name")
+	if error != nil {
+		InitializationError = error
+	}
 }
