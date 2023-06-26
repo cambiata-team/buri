@@ -3,13 +3,15 @@ package build
 import (
 	"buri/cli/helpers"
 	"buri/utils/target"
+
+	"github.com/spf13/afero"
 )
 
-func BuildTarget(rawTarget string) error {
+func BuildTarget(rawTarget string, afs *afero.Afero) error {
 	parsedTarget, err := target.ParseTarget(rawTarget)
 	if err != nil {
 		return err
 	}
-	_, err = helpers.ResolveDepGraph(&parsedTarget)
+	_, err = helpers.ResolveDepGraph(&parsedTarget, afs)
 	return err
 }

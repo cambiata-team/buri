@@ -4,20 +4,20 @@ import (
 	"buri/protos"
 	"buri/utils/target"
 	"errors"
-	"os"
 
+	"github.com/spf13/afero"
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
 type DepGraphNode struct {
 	Target target.Target
 	Files  []string
-	Deps   []DepGraphNode
+	Deps   []*DepGraphNode
 }
 
-func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget *target.Target) error {
+func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget *target.Target, afs *afero.Afero) error {
 	filePath := currentTarget.BuildFileLocation()
-	fileContents, err := os.ReadFile(filePath)
+	fileContents, err := afs.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -29,24 +29,27 @@ func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget *target.T
 }
 
 // TODO: error on circular dependencies
-func ResolveDepGraph(thorTarget *target.Target) (DepGraphNode, error) {
+func ResolveDepGraph(headTarget *target.Target, afs *afero.Afero) (DepGraphNode, error) {
 	head := DepGraphNode{
-		Target: *thorTarget,
+		Target: *headTarget,
 	}
-	if thorTarget.Name.Kind == target.Recursive {
+	if headTarget.Name.Kind == target.Recursive {
 		return head, errors.New("building recursive targets is not supported yet")
 	}
+	headString := headTarget.ToString()
 	allNodes := make(map[string]*DepGraphNode)
-	stack := []*DepGraphNode{}
+	allNodes[headString] = &head
+	stack := []*DepGraphNode{&head}
 	for len(stack) > 0 {
 		currentNode := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
 		buildFile := protos.BuildFile{}
-		err := getBuildFileFromTarget(&buildFile, &currentNode.Target)
+		err := getBuildFileFromTarget(&buildFile, &currentNode.Target, afs)
 		if err != nil {
 			return head, err
 		}
+		var isTargetInBuildFile = false
 		for _, library := range buildFile.Library {
 			if library.Name == currentNode.Target.Name.Value {
 				currentNode.Files = library.Files
@@ -56,7 +59,8 @@ func ResolveDepGraph(thorTarget *target.Target) (DepGraphNode, error) {
 						return head, err
 					}
 					targetString := dependencyTarget.ToString()
-					if _, nodeExists := allNodes[targetString]; nodeExists {
+					if node, nodeExists := allNodes[targetString]; nodeExists {
+						currentNode.Deps = append(currentNode.Deps, node)
 						continue
 					}
 					node := DepGraphNode{
@@ -64,9 +68,14 @@ func ResolveDepGraph(thorTarget *target.Target) (DepGraphNode, error) {
 					}
 					stack = append(stack, &node)
 					allNodes[targetString] = &node
+					currentNode.Deps = append(currentNode.Deps, &node)
 				}
+				isTargetInBuildFile = true
 				break
 			}
+		}
+		if !isTargetInBuildFile {
+			return head, errors.New("target not found in BUILD file")
 		}
 	}
 	return head, nil
