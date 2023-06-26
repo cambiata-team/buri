@@ -11,11 +11,11 @@ import (
 )
 
 type TargetFiles struct {
-	Target *target.Target
-	Files  *[]string
+	Target target.Target
+	Files  []string
 }
 
-func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget *target.Target, afs *afero.Afero) error {
+func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget target.Target, afs *afero.Afero) error {
 	filePath := currentTarget.BuildFileLocation()
 	fileContents, err := afs.ReadFile(filePath)
 	if err != nil {
@@ -29,20 +29,21 @@ func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget *target.T
 }
 
 func topologicalSortHelper(
-	currentTarget *target.Target,
+	currentTarget target.Target,
 	visited *map[string]struct{},
 	tempVisited *map[string]struct{},
 	sortedTargets *[]*TargetFiles,
 	afs *afero.Afero,
 ) error {
-	if _, ok := (*visited)[currentTarget.ToString()]; ok {
+	targetString := currentTarget.ToString()
+	if _, ok := (*visited)[targetString]; ok {
 		return nil
 	}
-	if _, ok := (*tempVisited)[currentTarget.ToString()]; ok {
+	if _, ok := (*tempVisited)[targetString]; ok {
 		return errors.New("circular dependency detected")
 	}
 
-	(*tempVisited)[currentTarget.ToString()] = struct{}{}
+	(*tempVisited)[targetString] = struct{}{}
 
 	// do stuff
 	buildFile := &protos.BuildFile{}
@@ -53,16 +54,17 @@ func topologicalSortHelper(
 	if buildFile.Library == nil {
 		return fmt.Errorf("build file '%s' does not contain a library", currentTarget.BuildFileLocation())
 	}
-	foundLibraryInBuildFile := false
+	var currentLibrary *protos.Library = nil
 	for _, library := range buildFile.Library {
 		if library.Name == currentTarget.Name.Value {
-			foundLibraryInBuildFile = true
+			currentLibrary = library
 			for _, dependency := range library.Dependencies {
 				dependencyTarget, err := target.ParseTarget(dependency)
 				if err != nil {
 					return err
 				}
-				err = topologicalSortHelper(&dependencyTarget, visited, tempVisited, sortedTargets, afs)
+
+				err = topologicalSortHelper(dependencyTarget, visited, tempVisited, sortedTargets, afs)
 				if err != nil {
 					return err
 				}
@@ -70,18 +72,18 @@ func topologicalSortHelper(
 			break
 		}
 	}
-	if !foundLibraryInBuildFile {
+	if currentLibrary == nil {
 		return fmt.Errorf("library '%s' not found in build file '%s'", currentTarget.Name.Value, currentTarget.BuildFileLocation())
 	}
 
 	// cleanup
-	delete(*tempVisited, currentTarget.ToString())
-	(*visited)[currentTarget.ToString()] = struct{}{}
-	*sortedTargets = append(*sortedTargets, &TargetFiles{currentTarget, nil})
+	delete(*tempVisited, targetString)
+	(*visited)[targetString] = struct{}{}
+	*sortedTargets = append(*sortedTargets, &TargetFiles{currentTarget, currentLibrary.Files})
 	return nil
 }
 
-func TopologicallySortDepGraph(headTarget *target.Target, afs *afero.Afero) ([]*TargetFiles, error) {
+func TopologicallySortDepGraph(headTarget target.Target, afs *afero.Afero) ([]*TargetFiles, error) {
 	output := []*TargetFiles{}
 	if headTarget.Name.Kind == target.Recursive {
 		return output, errors.New("building recursive targets is not supported yet")
