@@ -4,15 +4,15 @@ import (
 	"buri/protos"
 	"buri/utils/target"
 	"errors"
+	"fmt"
 
 	"github.com/spf13/afero"
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-type DepGraphNode struct {
-	Target target.Target
-	Files  []string
-	Deps   []*DepGraphNode
+type TargetFiles struct {
+	Target *target.Target
+	Files  *[]string
 }
 
 func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget *target.Target, afs *afero.Afero) error {
@@ -28,55 +28,71 @@ func getBuildFileFromTarget(buildFile *protos.BuildFile, currentTarget *target.T
 	return nil
 }
 
-// TODO: error on circular dependencies
-func ResolveDepGraph(headTarget *target.Target, afs *afero.Afero) (DepGraphNode, error) {
-	head := DepGraphNode{
-		Target: *headTarget,
+func topologicalSortHelper(
+	currentTarget *target.Target,
+	visited *map[string]struct{},
+	tempVisited *map[string]struct{},
+	sortedTargets *[]*TargetFiles,
+	afs *afero.Afero,
+) error {
+	if _, ok := (*visited)[currentTarget.ToString()]; ok {
+		return nil
 	}
-	if headTarget.Name.Kind == target.Recursive {
-		return head, errors.New("building recursive targets is not supported yet")
+	if _, ok := (*tempVisited)[currentTarget.ToString()]; ok {
+		return errors.New("circular dependency detected")
 	}
-	headString := headTarget.ToString()
-	allNodes := make(map[string]*DepGraphNode)
-	allNodes[headString] = &head
-	stack := []*DepGraphNode{&head}
-	for len(stack) > 0 {
-		currentNode := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
 
-		buildFile := protos.BuildFile{}
-		err := getBuildFileFromTarget(&buildFile, &currentNode.Target, afs)
-		if err != nil {
-			return head, err
-		}
-		var isTargetInBuildFile = false
-		for _, library := range buildFile.Library {
-			if library.Name == currentNode.Target.Name.Value {
-				currentNode.Files = library.Files
-				for _, dependency := range library.Dependencies {
-					dependencyTarget, err := target.ParseTarget(dependency)
-					if err != nil {
-						return head, err
-					}
-					targetString := dependencyTarget.ToString()
-					if node, nodeExists := allNodes[targetString]; nodeExists {
-						currentNode.Deps = append(currentNode.Deps, node)
-						continue
-					}
-					node := DepGraphNode{
-						Target: dependencyTarget,
-					}
-					stack = append(stack, &node)
-					allNodes[targetString] = &node
-					currentNode.Deps = append(currentNode.Deps, &node)
+	(*tempVisited)[currentTarget.ToString()] = struct{}{}
+
+	// do stuff
+	buildFile := &protos.BuildFile{}
+	err := getBuildFileFromTarget(buildFile, currentTarget, afs)
+	if err != nil {
+		return err
+	}
+	if buildFile.Library == nil {
+		return fmt.Errorf("build file '%s' does not contain a library", currentTarget.BuildFileLocation())
+	}
+	foundLibraryInBuildFile := false
+	for _, library := range buildFile.Library {
+		if library.Name == currentTarget.Name.Value {
+			foundLibraryInBuildFile = true
+			for _, dependency := range library.Dependencies {
+				dependencyTarget, err := target.ParseTarget(dependency)
+				if err != nil {
+					return err
 				}
-				isTargetInBuildFile = true
-				break
+				err = topologicalSortHelper(&dependencyTarget, visited, tempVisited, sortedTargets, afs)
+				if err != nil {
+					return err
+				}
 			}
-		}
-		if !isTargetInBuildFile {
-			return head, errors.New("target not found in BUILD file")
+			break
 		}
 	}
-	return head, nil
+	if !foundLibraryInBuildFile {
+		return fmt.Errorf("library '%s' not found in build file '%s'", currentTarget.Name.Value, currentTarget.BuildFileLocation())
+	}
+
+	// cleanup
+	delete(*tempVisited, currentTarget.ToString())
+	(*visited)[currentTarget.ToString()] = struct{}{}
+	*sortedTargets = append(*sortedTargets, &TargetFiles{currentTarget, nil})
+	return nil
+}
+
+func TopologicallySortDepGraph(headTarget *target.Target, afs *afero.Afero) ([]*TargetFiles, error) {
+	output := []*TargetFiles{}
+	if headTarget.Name.Kind == target.Recursive {
+		return output, errors.New("building recursive targets is not supported yet")
+	}
+
+	visited := make(map[string]struct{})
+	tempVisited := make(map[string]struct{})
+	error := topologicalSortHelper(headTarget, &visited, &tempVisited, &output, afs)
+
+	if error != nil {
+		return output, error
+	}
+	return output, nil
 }

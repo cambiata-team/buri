@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"buri/utils/target"
+	"fmt"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -14,7 +15,7 @@ func TestErrorsIfBuildFileDoesNotExist(t *testing.T) {
 	headTarget, _ := target.ParseTarget("//foo:bar")
 	afs := &afero.Afero{Fs: afero.NewMemMapFs()}
 
-	_, err := ResolveDepGraph(&headTarget, afs)
+	_, err := TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.NotNil(err)
 }
@@ -27,14 +28,14 @@ func TestErrorsIfBuildFileDoesNotContainTarget(t *testing.T) {
 	err := afs.WriteFile("foo/BUILD", []byte(""), 0644)
 	assert.Nil(err)
 
-	depGraph, err := ResolveDepGraph(&headTarget, afs)
+	sortedTargets, err := TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.NotNil(err)
 
-	assert.Equal(0, len(depGraph.Deps))
+	assert.Equal(0, len(sortedTargets))
 }
 
-func TestDepGraphNodeHasNoChildrenIfTargetHasNoDependencies(t *testing.T) {
+func TestOnlyOneSortedTargetIfTargetHasNoDependencies(t *testing.T) {
 	assert := assert.New(t)
 
 	headTarget, _ := target.ParseTarget("//foo:bar")
@@ -47,10 +48,10 @@ func TestDepGraphNodeHasNoChildrenIfTargetHasNoDependencies(t *testing.T) {
 	`), 0644)
 	assert.Nil(err)
 
-	depGraph, err := ResolveDepGraph(&headTarget, afs)
+	sortedTargets, err := TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.Nil(err)
-	assert.Equal(0, len(depGraph.Deps))
+	assert.Equal(1, len(sortedTargets))
 }
 
 func TestErrorsIfDependencyBuildFileDoesNotExist(t *testing.T) {
@@ -67,7 +68,7 @@ func TestErrorsIfDependencyBuildFileDoesNotExist(t *testing.T) {
 	`), 0644)
 	assert.Nil(err)
 
-	_, err = ResolveDepGraph(&headTarget, afs)
+	_, err = TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.NotNil(err)
 }
@@ -93,7 +94,7 @@ func TestErrorsDependencyBuildFileDoesNotIncludeTarget(t *testing.T) {
 	`), 0644)
 	assert.Nil(err)
 
-	_, err = ResolveDepGraph(&headTarget, afs)
+	_, err = TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.NotNil(err)
 }
@@ -119,10 +120,12 @@ func TestDependencyAddedToDepGraph(t *testing.T) {
 	`), 0644)
 	assert.Nil(err)
 
-	head, err := ResolveDepGraph(&headTarget, afs)
+	sortedTargets, err := TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.Nil(err)
-	assert.Equal(1, len(head.Deps))
+
+	fmt.Printf("%#v\n", sortedTargets[0].Target.ToString())
+	assert.Equal(2, len(sortedTargets))
 }
 
 func TestTraversesMultipleDependencyBuildFiles(t *testing.T) {
@@ -153,10 +156,10 @@ func TestTraversesMultipleDependencyBuildFiles(t *testing.T) {
 	`), 0644)
 	assert.Nil(err)
 
-	head, err := ResolveDepGraph(&headTarget, afs)
+	sortedTargets, err := TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.Nil(err)
-	assert.Equal(2, len(head.Deps))
+	assert.Equal(3, len(sortedTargets))
 }
 
 func TestTraversesMultipleTargetsInSameBuildFile(t *testing.T) {
@@ -183,10 +186,10 @@ func TestTraversesMultipleTargetsInSameBuildFile(t *testing.T) {
 	`), 0644)
 	assert.Nil(err)
 
-	head, err := ResolveDepGraph(&headTarget, afs)
+	sortedTargets, err := TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.Nil(err)
-	assert.Equal(2, len(head.Deps))
+	assert.Equal(3, len(sortedTargets))
 }
 
 func TestDiamondDependencyProducesOneNode(t *testing.T) {
@@ -214,12 +217,70 @@ func TestDiamondDependencyProducesOneNode(t *testing.T) {
 	`), 0644)
 	assert.Nil(err)
 
-	head, err := ResolveDepGraph(&headTarget, afs)
+	sortedTargets, err := TopologicallySortDepGraph(&headTarget, afs)
 
 	assert.Nil(err)
-	depB := head.Deps[0]
-	depC := head.Deps[1]
-	depDFromB := depB.Deps[0]
-	depDFromC := depC.Deps[0]
-	assert.Equal(depDFromB, depDFromC)
+	assert.Equal(4, len(sortedTargets))
+}
+
+func TestErrorsWithDependencyCycle(t *testing.T) {
+	assert := assert.New(t)
+
+	headTarget, _ := target.ParseTarget("//foo:a")
+	afs := &afero.Afero{Fs: afero.NewMemMapFs()}
+	err := afs.WriteFile("foo/BUILD", []byte(
+		`
+	library {
+		name: "a"
+		dependencies: ["//foo:b"]
+	}
+	library {
+		name: "b"
+		dependencies: ["//foo:a"]
+	}
+	`), 0644)
+	assert.Nil(err)
+
+	_, err = TopologicallySortDepGraph(&headTarget, afs)
+
+	assert.NotNil(err)
+}
+
+func TestTopologicallySortsDependencies(t *testing.T) {
+	assert := assert.New(t)
+
+	headTarget, _ := target.ParseTarget("//foo:a")
+	afs := &afero.Afero{Fs: afero.NewMemMapFs()}
+	err := afs.WriteFile("foo/BUILD", []byte(
+		`
+	library {
+		name: "a"
+		dependencies: ["//foo:b", "//foo:c"]
+	}
+	library {
+		name: "b"
+		dependencies: ["//foo:d"]
+	}
+	library {
+		name: "c"
+		dependencies: ["//foo:d"]
+	}
+	library {
+		name: "d"
+	}
+	`), 0644)
+	assert.Nil(err)
+
+	sortedTargets, err := TopologicallySortDepGraph(&headTarget, afs)
+
+	assert.Nil(err)
+	assert.Equal(4, len(sortedTargets))
+
+	// first because it does not have any dependencies
+	assert.Equal("//foo:d", sortedTargets[0].Target.ToString())
+	// the middle two nodes can be in any order
+	assert.True("//foo:b" == sortedTargets[1].Target.ToString() || "//foo:c" == sortedTargets[1].Target.ToString())
+	assert.True("//foo:b" == sortedTargets[2].Target.ToString() || "//foo:c" == sortedTargets[2].Target.ToString())
+	// last because it depends on everything else
+	assert.Equal("//foo:a", sortedTargets[3].Target.ToString())
 }

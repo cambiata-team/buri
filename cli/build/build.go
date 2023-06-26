@@ -12,6 +12,6 @@ func BuildTarget(rawTarget string, afs *afero.Afero) error {
 	if err != nil {
 		return err
 	}
-	_, err = helpers.ResolveDepGraph(&parsedTarget, afs)
+	_, err = helpers.TopologicallySortDepGraph(&parsedTarget, afs)
 	return err
 }
