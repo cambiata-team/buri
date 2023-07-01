@@ -1,0 +1,14 @@
+[package]
+name = "build-graph"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+protobuf.workspace = true
+protos = { path = "../../protos" }
+target = { path = "../target" }
+vfs.workspace = true
+virtual-io.workspace = true
+
+[dev-dependencies]
+test-utils = { path = "../test" }

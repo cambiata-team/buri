@@ -85,6 +85,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
 
 [[package]]
+name = "build-graph"
+version = "0.1.0"
+dependencies = [
+ "protobuf",
+ "protos",
+ "target",
+ "test-utils",
+ "vfs",
+ "virtual-io",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -499,6 +511,13 @@ dependencies = [
  "redox_syscall",
  "rustix 0.37.21",
  "windows-sys",
+]
+
+[[package]]
+name = "test-utils"
+version = "0.1.0"
+dependencies = [
+ "vfs",
 ]
 
 [[package]]

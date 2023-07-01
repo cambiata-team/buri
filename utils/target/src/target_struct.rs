@@ -1,12 +1,20 @@
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TargetName {
     Specific(String),
     // TODO: support recursive targets
 }
 
-#[derive(Debug, PartialEq)]
+impl fmt::Display for TargetName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TargetName::Specific(name) => write!(f, "{}", name),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Target {
     pub name: TargetName,
     pub directories: Vec<String>,
