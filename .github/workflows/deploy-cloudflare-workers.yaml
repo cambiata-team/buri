@@ -17,6 +17,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - run: source "$HOME/.cargo/env"
+    - run: cargo install worker-build
 
     - name: Publish version api
       uses: cloudflare/wrangler-action@2.0.0

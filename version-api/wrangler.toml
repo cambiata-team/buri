@@ -6,4 +6,4 @@ kv_namespaces = [
 ]
 
 [build]
-command = "cargo install -q worker-build && worker-build --release"
+command = "worker-build --release"
