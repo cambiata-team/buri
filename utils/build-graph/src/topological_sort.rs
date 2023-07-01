@@ -83,6 +83,7 @@ fn topological_sort_helper(
     }
 }
 
+// TODO: support recursive targets
 pub fn topologically_sort_dep_graph(
     head_target: Target,
     root: &VfsPath,
