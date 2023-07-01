@@ -1,13 +1,13 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub const BUILD_FILE_NAME: &str = "BUILD.toml";
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct BuildFile {
     pub library: Vec<Library>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Library {
     /// name of the library target
     pub name: String,

@@ -156,8 +156,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "files",
- "protobuf",
- "protos",
+ "toml",
  "vfs",
  "virtual-io",
 ]

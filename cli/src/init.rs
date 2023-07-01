@@ -1,6 +1,4 @@
-use files::workspace_file::WORKSPACE_FILE_NAME;
-use protobuf::text_format::print_to_string_pretty;
-use protos::workspace::WorkspaceFile;
+use files::workspace_file::{WorkspaceFile, WORKSPACE_FILE_NAME};
 use vfs::{VfsError, VfsPath};
 use virtual_io::VirtualIo;
 
@@ -15,11 +13,10 @@ pub fn do_init(
         return Ok(());
     }
     let mut workspace = WorkspaceFile::new();
-    workspace.buriVersion = "nightly".to_string();
     if let Some(name) = name {
-        workspace.name = name.to_string();
+        workspace.name = Some(name.to_string());
     }
-    let formatted_workspace_file = print_to_string_pretty(&workspace);
+    let formatted_workspace_file = toml::to_string_pretty(&workspace).unwrap();
     root.join(WORKSPACE_FILE_NAME)?
         .create_file()?
         .write_all(formatted_workspace_file.as_bytes())?;
@@ -34,7 +31,6 @@ pub fn do_init(
 mod test {
     use super::*;
     use files::workspace_file::WORKSPACE_FILE_NAME;
-    use protobuf::text_format::parse_from_str;
     use vfs::MemoryFS;
 
     #[test]
@@ -67,20 +63,9 @@ mod test {
         let mut vio = virtual_io::VioFakeBuilder::new().build();
         do_init(&root, &mut vio, &Some("foo".to_string())).unwrap();
         let workspace_file = root.join(WORKSPACE_FILE_NAME).unwrap();
-        let workspace: WorkspaceFile =
-            parse_from_str::<WorkspaceFile>(&workspace_file.read_to_string().unwrap()).unwrap();
-        assert_eq!(workspace.name, "foo");
-    }
-
-    #[test]
-    fn creates_workspace_file_with_nightly_version() {
-        let root: VfsPath = MemoryFS::new().into();
-        let mut vio = virtual_io::VioFakeBuilder::new().build();
-        do_init(&root, &mut vio, &Some("foo".to_string())).unwrap();
-        let workspace_file = root.join(WORKSPACE_FILE_NAME).unwrap();
-        let workspace: WorkspaceFile =
-            parse_from_str::<WorkspaceFile>(&workspace_file.read_to_string().unwrap()).unwrap();
-        assert_eq!(workspace.buriVersion, "nightly");
+        let workspace =
+            toml::from_str::<WorkspaceFile>(&workspace_file.read_to_string().unwrap()).unwrap();
+        assert_eq!(workspace.name, Some(String::from("foo")));
     }
 
     #[test]

@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 clap.workspace = true
 files = { path = "../utils/files" }
-protobuf.workspace = true
-protos = { path = "../protos" }
+toml.workspace = true
 vfs.workspace = true
 virtual-io.workspace = true
