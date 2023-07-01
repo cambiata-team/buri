@@ -1,0 +1,16 @@
+[package]
+name = "version-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+worker.workspace = true
+
+# https://github.com/rustwasm/wasm-pack/issues/1247
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
