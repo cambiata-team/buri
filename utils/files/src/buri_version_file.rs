@@ -1,5 +1,7 @@
 use std::fmt;
 
+pub const BURI_VERSION_FILE_NAME: &str = ".buri-version";
+
 #[derive(Debug, PartialEq)]
 pub struct BuriVersionFile {
     pub major: u32,
