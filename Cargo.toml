@@ -1,11 +1,10 @@
 [workspace]
 
-members = [
-    "cli",
-    "protos",
-]
+members = ["cli", "protos"]
 
 [workspace.dependencies]
+clap = { version = "4.3.10", features = ["derive"] }
+protobuf = "3.2.0"
 protobuf-codegen = "3.2.0"
 protoc-bin-vendored = "3.0.0"
-protobuf = "3.2.0"
+vfs = "0.9.0"
