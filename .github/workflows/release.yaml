@@ -5,6 +5,8 @@ on:
     # run only against tags
     tags:
       - '*'
+    branches:
+      - main
 
 jobs:
   release:

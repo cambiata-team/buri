@@ -1,6 +1,9 @@
 name: Deploy version API
 
-on: push
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   ci:
