@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["cli", "protos"]
+members = ["cli", "protos", "utils/target"]
 
 [workspace.dependencies]
 clap = { version = "4.3.10", features = ["derive"] }
