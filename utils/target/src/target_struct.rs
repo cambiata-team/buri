@@ -26,9 +26,16 @@ impl fmt::Display for Target {
     }
 }
 
+impl Target {
+    pub fn build_file_location(&self) -> String {
+        format!("{}/BUILD", self.directories.join("/"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parse::parse_target;
 
     #[test]
     fn test_target() {
@@ -46,5 +53,18 @@ mod tests {
             directories: vec![],
         };
         assert_eq!(target.to_string(), "//:test");
+    }
+
+    #[test]
+    fn test_build_file_location() {
+        let tests = [
+            ["//foo", "foo/BUILD"],
+            ["//foo:bar", "foo/BUILD"],
+            ["//foo/bar", "foo/bar/BUILD"],
+        ];
+        for test in tests.iter() {
+            let target = parse_target(test[0]).unwrap();
+            assert_eq!(target.build_file_location(), test[1]);
+        }
     }
 }
