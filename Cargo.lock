@@ -89,10 +89,9 @@ name = "build-graph"
 version = "0.1.0"
 dependencies = [
  "files",
- "protobuf",
- "protos",
  "target",
  "test-utils",
+ "toml",
  "vfs",
  "virtual-io",
 ]

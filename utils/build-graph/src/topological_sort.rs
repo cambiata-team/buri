@@ -1,11 +1,11 @@
 use crate::target_files::TargetFiles;
-use protobuf::text_format::{parse_from_str, ParseError};
-use protos::build::{BuildFile, Library};
+use files::build_file::{BuildFile, Library};
 use std::collections::HashSet;
 use target::{
     parse::{parse_target, TargetParseError},
     Target,
 };
+use toml::de::Error;
 use vfs::{VfsError, VfsPath};
 
 type Visited = HashSet<String>;
@@ -14,7 +14,7 @@ type Visited = HashSet<String>;
 pub enum DependencySortError {
     CyclicDependency(Target),
     VfsError(VfsError),
-    BuildFileParseError(ParseError),
+    BuildFileParseError(Error),
     ParseTargetError(TargetParseError),
     TargetNotFoundInBuildFile(Target),
 }
@@ -26,7 +26,7 @@ fn resolve_build_file(target: &Target, root: &VfsPath) -> Result<BuildFile, Depe
     let build_file = build_file_path
         .read_to_string()
         .map_err(DependencySortError::VfsError)?;
-    parse_from_str::<BuildFile>(&build_file).map_err(DependencySortError::BuildFileParseError)
+    toml::from_str::<BuildFile>(&build_file).map_err(DependencySortError::BuildFileParseError)
 }
 
 fn topological_sort_helper(
@@ -51,18 +51,22 @@ fn topological_sort_helper(
     let mut current_library: Option<&Library> = None;
 
     let target_name_string = current_target.name.to_string();
-    for library in &build_file.library {
-        if library.name == target_name_string {
-            current_library = Some(library);
+    if let Some(libraries) = &build_file.library {
+        for library in libraries {
+            if library.name == target_name_string {
+                current_library = Some(library);
 
-            for dep in &library.dependencies {
-                let dep_target =
-                    parse_target(dep).map_err(DependencySortError::ParseTargetError)?;
+                if let Some(dependencies) = &library.dependencies {
+                    for dep in dependencies {
+                        let dep_target =
+                            parse_target(dep).map_err(DependencySortError::ParseTargetError)?;
 
-                topological_sort_helper(dep_target, output, visited, temp_visited, root)?;
+                        topological_sort_helper(dep_target, output, visited, temp_visited, root)?;
+                    }
+                }
+
+                break;
             }
-
-            break;
         }
     }
 
@@ -72,7 +76,7 @@ fn topological_sort_helper(
             visited.insert(target_string);
             let target_files = TargetFiles {
                 target: current_target,
-                files: library.files.clone(),
+                files: library.files.clone().unwrap_or_default(),
             };
             output.push(target_files);
             Ok(())
@@ -123,6 +127,7 @@ mod test {
         let target = parse_target("//foo:bar").unwrap();
         create_test_file(&root, "foo/BUILD.toml", b"");
         let result = topologically_sort_dep_graph(target, &root);
+        println!("{:?}", result);
         assert!(matches!(
             result,
             Err(DependencySortError::TargetNotFoundInBuildFile(_))
@@ -137,9 +142,8 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"bar\"
-            }
+            [[library]]
+            name = \"bar\"
             ",
         );
         let result = topologically_sort_dep_graph(target.clone(), &root);
@@ -157,10 +161,9 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"bar\"
-                dependencies: \"//baz:qux\"
-            }
+            [[library]]
+            name = \"bar\"
+            dependencies = [\"//baz:qux\"]
             ",
         );
         let result = topologically_sort_dep_graph(target, &root);
@@ -175,10 +178,9 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"bar\"
-                dependencies: \"//fizz:buzz\"
-            }
+            [[library]]
+            name = \"bar\"
+            dependencies = [\"//fizz:buzz\"]
             ",
         );
         create_test_file(&root, "fizz/BUILD.toml", b"");
@@ -197,19 +199,17 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"bar\"
-                dependencies: \"//fizz:buzz\"
-            }
+            [[library]]
+            name = \"bar\"
+            dependencies = [\"//fizz:buzz\"]
             ",
         );
         create_test_file(
             &root,
             "fizz/BUILD.toml",
             b"
-            library {
-                name: \"buzz\"
-            }
+            [[library]]
+            name = \"buzz\"
             ",
         );
         let graph = topologically_sort_dep_graph(target, &root).unwrap();
@@ -224,29 +224,25 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"bar\"
-                dependencies: \"//fizz/buzz:qux\"
-                dependencies: \"//hello:world\"
-            }
+            [[library]]
+            name = \"bar\"
+            dependencies = [\"//fizz/buzz:qux\", \"//hello:world\"]
             ",
         );
         create_test_file(
             &root,
             "fizz/buzz/BUILD.toml",
             b"
-            library {
-                name: \"qux\"
-            }
+            [[library]]
+            name = \"qux\"
             ",
         );
         create_test_file(
             &root,
             "hello/BUILD.toml",
             b"
-            library {
-                name: \"world\"
-            }
+            [[library]]
+            name = \"world\"
             ",
         );
         let graph = topologically_sort_dep_graph(target, &root).unwrap();
@@ -261,23 +257,20 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"bar\"
-                dependencies: \"//fizz/buzz:qux\"
-                dependencies: \"//fizz/buzz:world\"
-            }
+            [[library]]
+            name = \"bar\"
+            dependencies = [\"//fizz/buzz:qux\", \"//fizz/buzz:world\"]
             ",
         );
         create_test_file(
             &root,
             "fizz/buzz/BUILD.toml",
             b"
-            library {
-                name: \"qux\"
-            }
-            library {
-                name: \"world\"
-            }
+            [[library]]
+            name = \"qux\"
+
+            [[library]]
+            name = \"world\"
             ",
         );
         let graph = topologically_sort_dep_graph(target, &root).unwrap();
@@ -292,22 +285,20 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"a\"
-                dependencies: \"//foo:b\"
-                dependencies: \"//foo:c\"
-            }
-            library {
-                name: \"b\"
-                dependencies: \"//foo:d\"
-            }
-            library {
-                name: \"c\"
-                dependencies: \"//foo:d\"
-            }
-            library {
-                name: \"d\"
-            }
+            [[library]]
+            name = \"a\"
+            dependencies = [\"//foo:b\", \"//foo:c\"]
+
+            [[library]]
+            name = \"b\"
+            dependencies = [\"//foo:d\"]
+
+            [[library]]
+            name = \"c\"
+            dependencies = [\"//foo:d\"]
+
+            [[library]]
+            name = \"d\"
             ",
         );
         let graph = topologically_sort_dep_graph(target, &root).unwrap();
@@ -323,14 +314,13 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"a\"
-                dependencies: \"//foo:b\"
-            }
-            library {
-                name: \"b\"
-                dependencies: \"//foo:a\"
-            }
+            [[library]]
+            name = \"a\"
+            dependencies = [\"//foo:b\"]
+
+            [[library]]
+            name = \"b\"
+            dependencies = [\"//foo:a\"]
             ",
         );
         let result = topologically_sort_dep_graph(target, &root);
@@ -348,22 +338,20 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"a\"
-                dependencies: \"//foo:b\"
-                dependencies: \"//foo:c\"
-            }
-            library {
-                name: \"b\"
-                dependencies: \"//foo:d\"
-            }
-            library {
-                name: \"c\"
-                dependencies: \"//foo:d\"
-            }
-            library {
-                name: \"d\"
-            }
+            [[library]]
+            name = \"a\"
+            dependencies = [\"//foo:b\", \"//foo:c\"]
+
+            [[library]]
+            name = \"b\"
+            dependencies = [\"//foo:d\"]
+
+            [[library]]
+            name = \"c\"
+            dependencies = [\"//foo:d\"]
+
+            [[library]]
+            name = \"d\"
             ",
         );
         let graph = topologically_sort_dep_graph(target, &root).unwrap();
@@ -390,15 +378,14 @@ mod test {
             &root,
             "foo/BUILD.toml",
             b"
-            library {
-                name: \"a\"
-                dependencies: \"//foo:b\"
-                files: \"a.buri\"
-            }
-            library {
-                name: \"b\"
-                files: \"b.buri\"
-            }
+            [[library]]
+            name = \"a\"
+            dependencies = [\"//foo:b\"]
+            files = [\"a.buri\"]
+
+            [[library]]
+            name = \"b\"
+            files = [\"b.buri\"]
             ",
         );
         let graph = topologically_sort_dep_graph(target, &root).unwrap();

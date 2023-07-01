@@ -5,9 +5,8 @@ edition = "2021"
 
 [dependencies]
 files = { path = "../files" }
-protobuf.workspace = true
-protos = { path = "../../protos" }
 target = { path = "../target" }
+toml.workspace = true
 vfs.workspace = true
 virtual-io.workspace = true
 
