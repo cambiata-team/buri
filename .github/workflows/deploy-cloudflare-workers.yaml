@@ -1,4 +1,4 @@
-name: Deploy version API
+name: Deploy Cloudflare Workers
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     - run: rustup component add cargo
     - uses: Swatinem/rust-cache@v2
 
-    - name: Publish Worker
+    - name: Publish version api
       uses: cloudflare/wrangler-action@2.0.0
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
