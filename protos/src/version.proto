@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+enum Program {
+  PROGRAM_UNSPECIFIED = 0;
+
+  // The build system to compile Buri.
+  PROGRAM_THOR = 1;
+
+  // The CLI tool that's a version manager for Thor and Buri.
+  PROGRAM_VERSION_MANAGER = 2;
+}
+
+// A CPU architecture.
+enum Architecture {
+  ARCHITECTURE_UNSPECIFIED = 0;
+  ARCHITECTURE_X86 = 1;
+  ARCHITECTURE_X86_64 = 2;
+  ARCHITECTURE_ARM = 3;
+  ARCHITECTURE_ARM64 = 4;
+}
+
+// An operating system family. In this context, a "family" refers to a set of
+// operating systems that have mutually compatible application binary
+// interfaces.
+enum OperatingSystemFamily {
+  OPERATING_SYSTEM_FAMILY_UNSPECIFIED = 0;
+  OPERATING_SYSTEM_FAMILY_LINUX = 1;
+  OPERATING_SYSTEM_FAMILY_DARWIN = 2;
+}
+
+// A set of cryptographic checksums. Each field refers to a specifc hashing
+// algorithm and has a specific length and format.
+message Checksum {
+  // The hash function used to create the checksum.
+  HashFunction hash_function = 1;
+  // A SHA512 hash. The hash is encoded as a lowercase hexadecimal string with
+  // length 128.
+  string checksum = 2;
+}
+
+// A release channel.
+enum Channel {
+  CHANNEL_UNSPECIFIED = 0;
+  CHANNEL_LATEST = 1;
+}
+
+// Encodes a semantic version.
+message SemanticVersion {
+  uint32 major = 1;
+  uint32 minor = 2;
+  uint32 patch = 3;
+}
+
+// A recognized hash function used as a checksum.
+enum HashFunction {
+  HASH_FUNCTION_UNSPECIFIED = 0;
+  HASH_FUNCTION_SHA512 = 1;
+}
+
+// Information about a specific version of an executable.
+message VersionInfo {
+  // The program associated with this Version.
+  Program program = 1;
+
+  // The CPU architecture on which the binary executable associated with this
+  // Version can run natively.
+  Architecture architecture = 2;
+
+  // The operating system family on which the binary executable associated with
+  // this Version can run natively.
+  OperatingSystemFamily operating_system_family = 3;
+
+  // The version number of the source code used to compile the binary
+  // executable associated with this Version.
+  SemanticVersion version_number = 4;
+
+  // The cryptographic checksum of the binary executable associated with this
+  // Version. For a client to consider a Version to be valid, this message
+  // must define at least one checksum value whose associated alrorithm is
+  // supported by the client.
+  repeated Checksum checksums = 5;
+
+  // A set of URLs from which a client can directly download the binary
+  // executable associated with this Version. A well-formed Version has at
+  // least one valid download link. If a Version supplies multiple download
+  // links, a client may attempt to download the binary executable from any of
+  // them.
+  repeated string download_links = 6;
+}
+
+// A request to retrieve information about a specific version of an executable.
+message GetVersionDownloadInfoRequest {
+  // The program for which to retrieve version information.
+  Program program = 1;
+
+  oneof version {
+    // The channel from which to retrieve version information.
+    Channel channel = 2;
+
+    // The specific version to retrieve information about.
+    SemanticVersion version_number = 3;
+  }
+
+  // The CPU architecture on which the client is running.
+  Architecture architecture = 4;
+
+  // The operating system family on which the client is running.
+  OperatingSystemFamily operating_system_family = 5;
+
+  // A list of all hash functions supported by the client that can be used to
+  // verify the checksum.
+  repeated HashFunction supported_hash_functions = 6;
+}
+
+// A response to a GetVersionInfoRequest.
+message GetVersionDownloadInfoResponse {
+  // The version information for the requested version.
+  repeated string download_links = 1;
+
+  // The cryptographic checksum of the executable.
+  Checksum checksum = 2;
+}

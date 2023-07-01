@@ -1,0 +1,14 @@
+[package]
+name = "build-graph"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+files = { path = "../files" }
+target = { path = "../target" }
+toml.workspace = true
+vfs.workspace = true
+virtual-io.workspace = true
+
+[dev-dependencies]
+test-utils = { path = "../test" }

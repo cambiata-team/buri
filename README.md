@@ -11,11 +11,3 @@ curl -fsSL https://github.com/cambiata-team/buri-go/raw/main/install.sh | sudo s
 Also use the above installation command to update the toolchain. There are plans to improve this process in the future.
 
 ## Contributing
-
-### Protos
-
-The command to regenerate the protos is:
-
-```sh
-protoc -I=./protos --go_out=./ ./protos/workspace.proto
-```

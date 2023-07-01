@@ -21,3 +21,11 @@
 go.work
 
 dist/
+
+
+# Added by cargo
+
+/target
+
+WORKSPACE.toml
+.buri-version
