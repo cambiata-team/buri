@@ -23,9 +23,10 @@ fn main() {
     let cli = Cli::parse();
 
     let root: VfsPath = PhysicalFS::new(std::env::current_dir().unwrap()).into();
+    let mut vio = virtual_io::Vio::new();
 
     let result = match &cli.command {
-        Some(Commands::Init { name }) => init::do_init(&root, name),
+        Some(Commands::Init { name }) => init::do_init(&root, &mut vio, name),
         None => Ok(()),
     };
     if let Err(e) = result {

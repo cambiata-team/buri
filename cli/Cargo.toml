@@ -8,3 +8,4 @@ clap.workspace = true
 protobuf.workspace = true
 protos = { path = "../protos" }
 vfs.workspace = true
+virtual-io.workspace = true
