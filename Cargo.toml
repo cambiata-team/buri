@@ -1,0 +1,11 @@
+[workspace]
+
+members = [
+    "cli",
+    "protos",
+]
+
+[workspace.dependencies]
+protobuf-codegen = "3.2.0"
+protoc-bin-vendored = "3.0.0"
+protobuf = "3.2.0"
