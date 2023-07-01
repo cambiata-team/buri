@@ -9,3 +9,8 @@ files = { path = "../utils/files" }
 toml.workspace = true
 vfs.workspace = true
 virtual-io.workspace = true
+
+[profile.release]
+strip = true
+opt-level = 3
+lto = true

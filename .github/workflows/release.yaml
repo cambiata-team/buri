@@ -2,29 +2,46 @@ name: Release
 
 on:
   push:
-    # run only against tags
     tags:
-      - '*'
+      - "*"
+
+permissions:
+  contents: write
 
 jobs:
-  release:
+  create-release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v3
+      - uses: taiki-e/create-gh-release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    - run: git fetch --force --tags
+  build-and-upload:
+    name: Build and upload
+    needs: create-release
+    runs-on: ${{ matrix.os }}
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: stable
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          # Universal macOS binary is supported as universal-apple-darwin.
+          - target: universal-apple-darwin
+            os: macos-latest
 
-    - uses: goreleaser/goreleaser-action@v4
-      with:
-        distribution: goreleaser
-        version: latest
-        args: release --clean
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: cli
+          target: ${{ matrix.target }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checksum: sha256
