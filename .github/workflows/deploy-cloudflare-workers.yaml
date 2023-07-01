@@ -11,6 +11,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install cargo
+      run: curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+    - uses: Swatinem/rust-cache@v2
+
     - name: Publish version api
       uses: CodeCrowCorp/wrangler-rs-action@0.0.1
       with:
