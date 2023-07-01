@@ -20,7 +20,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Publish version api
-      uses: cloudflare/wrangler-action@2.0.0
+      uses: CodeCrowCorp/wrangler-rs-action@0.0.1
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         workingDirectory: './version-api'
