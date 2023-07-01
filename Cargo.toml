@@ -2,6 +2,7 @@
 
 members = [
     "cli",
+    "protos",
     "utils/target",
     "utils/build-graph",
     "utils/test",
@@ -10,6 +11,9 @@ members = [
 
 [workspace.dependencies]
 clap = { version = "4.3.10", features = ["derive"] }
+protobuf = "3.2.0"
+protobuf-codegen = "3.2.0"
+protoc-bin-vendored = "3.0.0"
 serde = { version = "1.0.164", features = ["derive"] }
 toml = "0.7.5"
 toml_edit = "0.19.11"
