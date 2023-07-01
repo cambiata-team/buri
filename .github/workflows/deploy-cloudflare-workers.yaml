@@ -17,6 +17,8 @@ jobs:
         profile: minimal
         override: true
 
+    - run: rustup default stable
+
     - uses: Swatinem/rust-cache@v2
 
     - name: Publish version api
