@@ -1,15 +1,15 @@
 use std::fmt;
 
-pub const BURI_VERSION_FILE_NAME: &str = ".buri-version";
+pub const VERSION_FILE_NAME: &str = ".buri-version";
 
 #[derive(Debug, PartialEq)]
-pub struct BuriVersionFile {
+pub struct VersionFile {
     pub major: u32,
     pub minor: u32,
     pub patch: u32,
 }
 
-impl fmt::Display for BuriVersionFile {
+impl fmt::Display for VersionFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
     }
@@ -22,13 +22,13 @@ enum CurrentDigit {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum BuriVersionFileParseError {
+pub enum VersionFileParseError {
     IllegalCharacter(char),
     TooManySegments,
 }
 
-impl BuriVersionFile {
-    pub fn from_string(version: &str) -> Result<Self, BuriVersionFileParseError> {
+impl VersionFile {
+    pub fn from_string(version: &str) -> Result<Self, VersionFileParseError> {
         let version = version.trim();
         let mut major = 0;
         let mut minor = 0;
@@ -59,11 +59,11 @@ impl BuriVersionFile {
                         current_digit = CurrentDigit::Patch;
                     }
                     CurrentDigit::Patch => {
-                        return Err(BuriVersionFileParseError::TooManySegments);
+                        return Err(VersionFileParseError::TooManySegments);
                     }
                 },
                 _ => {
-                    return Err(BuriVersionFileParseError::IllegalCharacter(c));
+                    return Err(VersionFileParseError::IllegalCharacter(c));
                 }
             }
         }
@@ -81,7 +81,7 @@ mod test {
 
     #[test]
     fn serializes_file_with_semantic_version_1_2_3() {
-        let file = BuriVersionFile {
+        let file = VersionFile {
             major: 1,
             minor: 2,
             patch: 3,
@@ -91,7 +91,7 @@ mod test {
 
     #[test]
     fn serializes_file_with_semantic_version_4_5_2() {
-        let file = BuriVersionFile {
+        let file = VersionFile {
             major: 4,
             minor: 5,
             patch: 2,
@@ -101,10 +101,10 @@ mod test {
 
     #[test]
     fn parses_file_with_semantic_version_1_2_3() {
-        let file = BuriVersionFile::from_string("1.2.3").unwrap();
+        let file = VersionFile::from_string("1.2.3").unwrap();
         assert_eq!(
             file,
-            BuriVersionFile {
+            VersionFile {
                 major: 1,
                 minor: 2,
                 patch: 3,
@@ -114,10 +114,10 @@ mod test {
 
     #[test]
     fn parses_file_with_semantic_version_4_5_2() {
-        let file = BuriVersionFile::from_string("4.5.2").unwrap();
+        let file = VersionFile::from_string("4.5.2").unwrap();
         assert_eq!(
             file,
-            BuriVersionFile {
+            VersionFile {
                 major: 4,
                 minor: 5,
                 patch: 2,
@@ -127,10 +127,10 @@ mod test {
 
     #[test]
     fn trim_whitespace() {
-        let file = BuriVersionFile::from_string("  1.2.3  ").unwrap();
+        let file = VersionFile::from_string("  1.2.3  ").unwrap();
         assert_eq!(
             file,
-            BuriVersionFile {
+            VersionFile {
                 major: 1,
                 minor: 2,
                 patch: 3,
@@ -140,13 +140,13 @@ mod test {
 
     #[test]
     fn parse_error_on_illegal_character() {
-        let file = BuriVersionFile::from_string("1.2.3a");
-        assert_eq!(file, Err(BuriVersionFileParseError::IllegalCharacter('a')));
+        let file = VersionFile::from_string("1.2.3a");
+        assert_eq!(file, Err(VersionFileParseError::IllegalCharacter('a')));
     }
 
     #[test]
     fn parse_error_on_too_many_segments() {
-        let file = BuriVersionFile::from_string("1.1.1.1");
-        assert_eq!(file, Err(BuriVersionFileParseError::TooManySegments));
+        let file = VersionFile::from_string("1.1.1.1");
+        assert_eq!(file, Err(VersionFileParseError::TooManySegments));
     }
 }
