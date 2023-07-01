@@ -3,6 +3,7 @@
 members = [
     "cli",
     "protos",
+    "thor",
     "utils/target",
     "utils/build-graph",
     "utils/test",
