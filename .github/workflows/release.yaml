@@ -11,11 +11,20 @@ permissions:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - uses: actions/checkout@v3
-      - uses: taiki-e/create-gh-release-action@v1
+      - name: Create Draft Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          draft: true
+          prerelease: false
 
   build-and-upload:
     name: Build and upload
@@ -27,21 +36,34 @@ jobs:
         include:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-          - target: aarch64-apple-darwin
-            os: macos-latest
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+
           - target: x86_64-apple-darwin
             os: macos-latest
-          # Universal macOS binary is supported as universal-apple-darwin.
-          - target: universal-apple-darwin
+          - target: aarch64-apple-darwin
             os: macos-latest
 
     steps:
       - uses: actions/checkout@v3
+
+      - uses: Swatinem/rust-cache@v2
+
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: cli
           target: ${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
           checksum: sha256
+
+  publish-release:
+    name: Publish Release
+    needs: [build-and-upload, create-release]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: eregon/publish-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ needs.create-release.outputs.release_id }}
