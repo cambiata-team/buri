@@ -1,0 +1,9 @@
+name = "buri-version-api"
+main = "build/worker/shim.mjs"
+compatibility_date = "2023-07-01"
+kv_namespaces = [
+    { binding = "VERSIONS", id = "b9a0d17a1e764171ab43b77b0b02f11b" },
+]
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
