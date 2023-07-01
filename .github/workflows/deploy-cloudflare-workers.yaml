@@ -11,16 +11,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - uses: ructions/toolchain@v2
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-
-    - run: rustup default stable
-
-    - uses: Swatinem/rust-cache@v2
-
     - name: Publish version api
       uses: CodeCrowCorp/wrangler-rs-action@0.0.1
       with:
