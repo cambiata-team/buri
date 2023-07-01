@@ -1,3 +1,4 @@
+use files::workspace_file::WORKSPACE_FILE_NAME;
 use protobuf::text_format::print_to_string_pretty;
 use protos::workspace::WorkspaceFile;
 use vfs::{VfsError, VfsPath};
@@ -8,7 +9,7 @@ pub fn do_init(
     vio: &mut impl VirtualIo,
     name: &Option<String>,
 ) -> Result<(), VfsError> {
-    let workspace_file = root.join("WORKSPACE")?;
+    let workspace_file = root.join(WORKSPACE_FILE_NAME)?;
     if workspace_file.exists()? {
         vio.println("Workspace already exists, no need to create a new one.");
         return Ok(());
@@ -19,7 +20,7 @@ pub fn do_init(
         workspace.name = name.to_string();
     }
     let formatted_workspace_file = print_to_string_pretty(&workspace);
-    root.join("WORKSPACE")?
+    root.join(WORKSPACE_FILE_NAME)?
         .create_file()?
         .write_all(formatted_workspace_file.as_bytes())?;
     vio.println(format!(
@@ -32,6 +33,7 @@ pub fn do_init(
 #[cfg(test)]
 mod test {
     use super::*;
+    use files::workspace_file::WORKSPACE_FILE_NAME;
     use protobuf::text_format::parse_from_str;
     use vfs::MemoryFS;
 
@@ -40,14 +42,14 @@ mod test {
         let root: VfsPath = MemoryFS::new().into();
         let mut vio = virtual_io::VioFakeBuilder::new().build();
         do_init(&root, &mut vio, &None).unwrap();
-        let workspace_file = root.join("WORKSPACE").unwrap();
+        let workspace_file = root.join(WORKSPACE_FILE_NAME).unwrap();
         assert!(workspace_file.exists().unwrap());
     }
 
     #[test]
     fn does_not_overwrite_existing_workspace_file() {
         let root: VfsPath = MemoryFS::new().into();
-        root.join("WORKSPACE")
+        root.join(WORKSPACE_FILE_NAME)
             .unwrap()
             .create_file()
             .unwrap()
@@ -55,7 +57,7 @@ mod test {
             .unwrap();
         let mut vio = virtual_io::VioFakeBuilder::new().build();
         do_init(&root, &mut vio, &None).unwrap();
-        let workspace_file = root.join("WORKSPACE").unwrap();
+        let workspace_file = root.join(WORKSPACE_FILE_NAME).unwrap();
         assert_eq!(workspace_file.read_to_string().unwrap(), "foo");
     }
 
@@ -64,7 +66,7 @@ mod test {
         let root: VfsPath = MemoryFS::new().into();
         let mut vio = virtual_io::VioFakeBuilder::new().build();
         do_init(&root, &mut vio, &Some("foo".to_string())).unwrap();
-        let workspace_file = root.join("WORKSPACE").unwrap();
+        let workspace_file = root.join(WORKSPACE_FILE_NAME).unwrap();
         let workspace: WorkspaceFile =
             parse_from_str::<WorkspaceFile>(&workspace_file.read_to_string().unwrap()).unwrap();
         assert_eq!(workspace.name, "foo");
@@ -75,7 +77,7 @@ mod test {
         let root: VfsPath = MemoryFS::new().into();
         let mut vio = virtual_io::VioFakeBuilder::new().build();
         do_init(&root, &mut vio, &Some("foo".to_string())).unwrap();
-        let workspace_file = root.join("WORKSPACE").unwrap();
+        let workspace_file = root.join(WORKSPACE_FILE_NAME).unwrap();
         let workspace: WorkspaceFile =
             parse_from_str::<WorkspaceFile>(&workspace_file.read_to_string().unwrap()).unwrap();
         assert_eq!(workspace.buriVersion, "nightly");
@@ -85,7 +87,7 @@ mod test {
     fn prints_that_workspace_file_was_created() {
         let root: VfsPath = MemoryFS::new().into();
         let mut vio = virtual_io::VioFakeBuilder::new()
-            .expect_stdout("Created new workspace at ./WORKSPACE\n")
+            .expect_stdout("Created new workspace at ./WORKSPACE.toml\n")
             .build();
         do_init(&root, &mut vio, &None).unwrap();
         assert_eq!(vio.get_actual(), vio.get_expected());
@@ -94,7 +96,7 @@ mod test {
     #[test]
     fn shows_error_if_workspace_file_exists() {
         let root: VfsPath = MemoryFS::new().into();
-        root.join("WORKSPACE")
+        root.join(WORKSPACE_FILE_NAME)
             .unwrap()
             .create_file()
             .unwrap()

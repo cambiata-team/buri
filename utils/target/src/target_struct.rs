@@ -1,5 +1,7 @@
 use std::fmt;
 
+use files::build_file::BUILD_FILE_NAME;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TargetName {
     Specific(String),
@@ -36,7 +38,7 @@ impl fmt::Display for Target {
 
 impl Target {
     pub fn build_file_location(&self) -> String {
-        format!("{}/BUILD", self.directories.join("/"))
+        format!("{}/{}", self.directories.join("/"), BUILD_FILE_NAME)
     }
 }
 
@@ -66,9 +68,9 @@ mod tests {
     #[test]
     fn test_build_file_location() {
         let tests = [
-            ["//foo", "foo/BUILD"],
-            ["//foo:bar", "foo/BUILD"],
-            ["//foo/bar", "foo/bar/BUILD"],
+            ["//foo", "foo/BUILD.toml"],
+            ["//foo:bar", "foo/BUILD.toml"],
+            ["//foo/bar", "foo/bar/BUILD.toml"],
         ];
         for test in tests.iter() {
             let target = parse_target(test[0]).unwrap();

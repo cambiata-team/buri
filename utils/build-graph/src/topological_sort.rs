@@ -121,7 +121,7 @@ mod test {
     fn errors_if_build_file_does_not_contain_target() {
         let root: VfsPath = MemoryFS::new().into();
         let target = parse_target("//foo:bar").unwrap();
-        create_test_file(&root, "foo/BUILD", b"");
+        create_test_file(&root, "foo/BUILD.toml", b"");
         let result = topologically_sort_dep_graph(target, &root);
         assert!(matches!(
             result,
@@ -135,7 +135,7 @@ mod test {
         let target = parse_target("//foo:bar").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"bar\"
@@ -155,7 +155,7 @@ mod test {
         let target = parse_target("//foo:bar").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"bar\"
@@ -173,7 +173,7 @@ mod test {
         let target = parse_target("//foo:bar").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"bar\"
@@ -181,7 +181,7 @@ mod test {
             }
             ",
         );
-        create_test_file(&root, "fizz/BUILD", b"");
+        create_test_file(&root, "fizz/BUILD.toml", b"");
         let result = topologically_sort_dep_graph(target, &root);
         assert!(matches!(
             result,
@@ -195,7 +195,7 @@ mod test {
         let target = parse_target("//foo:bar").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"bar\"
@@ -205,7 +205,7 @@ mod test {
         );
         create_test_file(
             &root,
-            "fizz/BUILD",
+            "fizz/BUILD.toml",
             b"
             library {
                 name: \"buzz\"
@@ -222,7 +222,7 @@ mod test {
         let target = parse_target("//foo:bar").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"bar\"
@@ -233,7 +233,7 @@ mod test {
         );
         create_test_file(
             &root,
-            "fizz/buzz/BUILD",
+            "fizz/buzz/BUILD.toml",
             b"
             library {
                 name: \"qux\"
@@ -242,7 +242,7 @@ mod test {
         );
         create_test_file(
             &root,
-            "hello/BUILD",
+            "hello/BUILD.toml",
             b"
             library {
                 name: \"world\"
@@ -259,7 +259,7 @@ mod test {
         let target = parse_target("//foo:bar").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"bar\"
@@ -270,7 +270,7 @@ mod test {
         );
         create_test_file(
             &root,
-            "fizz/buzz/BUILD",
+            "fizz/buzz/BUILD.toml",
             b"
             library {
                 name: \"qux\"
@@ -290,7 +290,7 @@ mod test {
         let target = parse_target("//foo:a").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"a\"
@@ -321,7 +321,7 @@ mod test {
         let target = parse_target("//foo:a").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"a\"
@@ -346,7 +346,7 @@ mod test {
         let target = parse_target("//foo:a").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"a\"
@@ -388,7 +388,7 @@ mod test {
         let target = parse_target("//foo:a").unwrap();
         create_test_file(
             &root,
-            "foo/BUILD",
+            "foo/BUILD.toml",
             b"
             library {
                 name: \"a\"

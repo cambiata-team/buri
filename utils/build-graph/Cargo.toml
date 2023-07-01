@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+files = { path = "../files" }
 protobuf.workspace = true
 protos = { path = "../../protos" }
 target = { path = "../target" }

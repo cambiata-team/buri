@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+pub const BUILD_FILE_NAME: &str = "BUILD.toml";
+
 #[derive(Deserialize)]
 pub struct BuildFile {
     pub library: Vec<Library>,
