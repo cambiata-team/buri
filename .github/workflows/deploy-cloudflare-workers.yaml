@@ -11,8 +11,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: rustup toolchain install stable --profile minimal
-    - run: rustup component add cargo
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
     - uses: Swatinem/rust-cache@v2
 
     - name: Publish version api
