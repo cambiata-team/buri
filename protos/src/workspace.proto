@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-option go_package = "/protos";
-
-/// What happens if I generate documentation comments?
-message WorkspaceFile {
-  string name = 1;
-  string buriVersion = 2;
-}
