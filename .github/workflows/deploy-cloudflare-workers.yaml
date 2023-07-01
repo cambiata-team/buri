@@ -16,6 +16,8 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
+    - run: source "$HOME/.cargo/env"
+
     - name: Publish version api
       uses: CodeCrowCorp/wrangler-rs-action@0.0.1
       with:
