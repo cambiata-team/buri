@@ -19,7 +19,7 @@ async fn main(_: Request, _: Env, _: Context) -> Result<Response> {
     let router = Router::new();
 
     router
-        .post_async("/", |_, _| async move {
+        .get("/", |_, _| {
             Response::ok("Please download the Buri CLI. This url does not host a website.")
         })
         .get_async("/getVersionDownloadInfo", |req, ctx| async move {
