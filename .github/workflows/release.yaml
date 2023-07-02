@@ -75,7 +75,7 @@ jobs:
         with:
           url: https://version-api.buri-lang.dev/add-release
           method: POST
-          payload: "${{ needs.create-release.outputs.release_id }}"
+          payload: '{ "release_id": "${{ needs.create-release.outputs.release_id }}"}'
           headers: '{"Authentication": "${{ secrets.RELEASE_WEBHOOK_SECRET }}"}'
 
       - run: echo ${{ steps.webhook.outputs.output }}

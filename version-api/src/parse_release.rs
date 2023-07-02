@@ -21,6 +21,11 @@ pub struct BinaryInfo {
     pub hash_download_url: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct WebhookBody<'a> {
+    pub release_id: &'a str,
+}
+
 pub fn get_hash_from_sha256_file(sha256_file: &str) -> &str {
     // A Sha256 hash is always 64 characters long in base64.
     &sha256_file[0..64]

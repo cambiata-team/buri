@@ -1,6 +1,8 @@
 use kv::{create_version_info, create_version_info_key_from_request, get_keys_from_binary_info};
 use macros::return_if_error;
-use parse_release::{get_hash_from_sha256_file, parse_asset_to_binary_info, BinaryInfo, Release};
+use parse_release::{
+    get_hash_from_sha256_file, parse_asset_to_binary_info, BinaryInfo, Release, WebhookBody,
+};
 use prost::Message;
 use protos::{
     decode_base_64_to_bytes, encode_message_to_bytes,
@@ -94,7 +96,12 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                     return Response::error("Unauthorized", 401);
                 }
             }
-            let release_id = req.text().await?;
+            let body = req.text().await?;
+            let release_id = return_if_error!(
+                serde_json::from_str::<WebhookBody>(&body),
+                Response::error("Bad request", 400)
+            )
+            .release_id;
             let raw_release_data = Fetch::Url(Url::from_str(&format!(
                 "https://api.github.com/repos/cambiata-team/buri/releases/{release_id}"
             ))?)
