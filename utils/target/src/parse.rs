@@ -102,4 +102,27 @@ mod test {
             assert_eq!(target.get_directories(), test[1]);
         }
     }
+
+    #[test]
+    fn errors_on_invalid_targets() {
+        let tests = [
+            "//",
+            ":",
+            "\\",
+            "hello world",
+            "//foo/bar...",
+            "//foo/bar:baz...",
+            "//foo/bar:baz:...",
+            "foo/.../bar",
+            "//foo ",
+            "/hello",
+            "hello/",
+            "//foo/bar:baz/qux",
+            "...:foo",
+        ];
+        for test in tests.iter() {
+            let result = parse_target(test);
+            assert!(result.is_err());
+        }
+    }
 }
