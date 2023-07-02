@@ -99,7 +99,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             let body = req.text().await?;
             let release_id = return_if_error!(
                 serde_json::from_str::<WebhookBody>(&body),
-                Response::error("Bad request", 400)
+                Response::error(format!("Bad request - cannot parse body: {body}"), 400)
             )
             .release_id;
             let raw_release_data = Fetch::Url(Url::from_str(&format!(
@@ -111,11 +111,20 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             .await?;
             let release_data: Release = return_if_error!(
                 serde_json::from_str(&raw_release_data),
-                Response::error("Bad request", 400)
+                Response::error(
+                    format!("Bad request - cannot parse release data: {raw_release_data}"),
+                    400
+                )
             );
             let version = return_if_error!(
                 parse_semantic_version_from_string(release_data.tag_name),
-                Response::error("Bad request", 400)
+                Response::error(
+                    format!(
+                        "Bad request - cannot parse version: {}",
+                        release_data.tag_name
+                    ),
+                    400
+                )
             );
             let binary_infos: Vec<BinaryInfo> = release_data
                 .assets
