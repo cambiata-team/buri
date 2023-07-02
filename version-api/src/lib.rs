@@ -159,6 +159,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
 
 async fn fetch(url: &str) -> Result<String> {
     let mut request = Request::new(url, Method::Get)?;
+    // See https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#user-agent-required
     request.headers_mut()?.set("User-Agent", "cambiata-team")?;
     let body = Fetch::Request(request).send().await?.text().await?;
     Ok(body)
