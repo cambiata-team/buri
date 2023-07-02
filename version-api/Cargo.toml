@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-worker.workspace = true
+macros = { path = "../utils/macros" }
 prost.workspace = true
 protos = { path = "../protos" }
+worker.workspace = true
 
 
 # https://github.com/rustwasm/wasm-pack/issues/1247

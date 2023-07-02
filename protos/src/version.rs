@@ -8,9 +8,7 @@ pub enum VersionInfoError {
     UnspecifiedArchitecture,
     UnspecifiedOperatingSystemFamily,
     UnspecifiedVersionNumber,
-    UnspecifiedMajorVersion,
-    UnspecifiedMinorVersion,
-    UnspecifiedPatchVersion,
+    InvalidVersion(SemanticVersionError),
     MissingChecksums,
     UnspecifiedHashFunction,
     EmptyChecksumHash,
@@ -30,7 +28,9 @@ pub enum DownloadUrlError {
 }
 
 /// Validates the download URL and checks for several potential security issues.
-fn validate_download_url(url: &str) -> Result<(), DownloadUrlError> {
+/// Note: this function does not ensure that the URL is reachable or secure.
+/// It just uses some heuristics to check for obviously insecure URLs.
+pub fn validate_download_url(url: &str) -> Result<(), DownloadUrlError> {
     if url.is_empty() {
         return Err(DownloadUrlError::EmptyUrl);
     }
@@ -56,6 +56,8 @@ fn validate_download_url(url: &str) -> Result<(), DownloadUrlError> {
     Ok(())
 }
 
+/// Validates the version info message. Note: this does not guarantee the version exists.
+/// It just checks that the message is well-formed.
 pub fn validate_version_info_message(version_info: &VersionInfo) -> Result<(), VersionInfoError> {
     if version_info.program() == Program::Unspecified {
         return Err(VersionInfoError::UnspecifiedProgram);
@@ -68,15 +70,7 @@ pub fn validate_version_info_message(version_info: &VersionInfo) -> Result<(), V
     }
     match &version_info.version_number {
         Some(version_number) => {
-            if version_number.major.is_none() {
-                return Err(VersionInfoError::UnspecifiedMajorVersion);
-            }
-            if version_number.minor.is_none() {
-                return Err(VersionInfoError::UnspecifiedMinorVersion);
-            }
-            if version_number.patch.is_none() {
-                return Err(VersionInfoError::UnspecifiedPatchVersion);
-            }
+            validate_semantic_version(version_number).map_err(VersionInfoError::InvalidVersion)?;
         }
         None => {
             return Err(VersionInfoError::UnspecifiedVersionNumber);
@@ -98,6 +92,82 @@ pub fn validate_version_info_message(version_info: &VersionInfo) -> Result<(), V
     }
     for url in &version_info.download_urls {
         validate_download_url(url).map_err(VersionInfoError::InvalidDownloadUrl)?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum SemanticVersionError {
+    UnspecifiedMajorVersion,
+    UnspecifiedMinorVersion,
+    UnspecifiedPatchVersion,
+}
+
+pub fn validate_semantic_version(
+    semantic_version: &SemanticVersion,
+) -> Result<(), SemanticVersionError> {
+    if semantic_version.major.is_none() {
+        return Err(SemanticVersionError::UnspecifiedMajorVersion);
+    }
+    if semantic_version.minor.is_none() {
+        return Err(SemanticVersionError::UnspecifiedMinorVersion);
+    }
+    if semantic_version.patch.is_none() {
+        return Err(SemanticVersionError::UnspecifiedPatchVersion);
+    }
+    Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum GetVersionDownloadInfoError {
+    ProgramNotSpecified,
+    VersionNotSpecified,
+    InvalidSemanticVersion(SemanticVersionError),
+    ArchitectureNotSpecified,
+    OperatingSystemFamilyNotSpecified,
+    SupportedHashFunctionsNotSpecified,
+    InvalidSupportedHashFunction,
+}
+
+pub fn validate_get_version_download_info_request(
+    request: &GetVersionDownloadInfoRequest,
+) -> Result<(), GetVersionDownloadInfoError> {
+    if request.program() == Program::Unspecified {
+        return Err(GetVersionDownloadInfoError::ProgramNotSpecified);
+    }
+    match &request.version {
+        Some(get_version_download_info_request::Version::Channel(channel)) => {
+            if matches!(
+                Channel::from_i32(*channel),
+                Some(Channel::Unspecified) | None
+            ) {
+                return Err(GetVersionDownloadInfoError::VersionNotSpecified);
+            }
+        }
+        Some(get_version_download_info_request::Version::VersionNumber(semantic_version)) => {
+            validate_semantic_version(semantic_version)
+                .map_err(GetVersionDownloadInfoError::InvalidSemanticVersion)?;
+        }
+        None => {
+            return Err(GetVersionDownloadInfoError::VersionNotSpecified);
+        }
+    }
+    if request.architecture() == Architecture::Unspecified {
+        return Err(GetVersionDownloadInfoError::ArchitectureNotSpecified);
+    }
+    if request.operating_system_family() == OperatingSystemFamily::Unspecified {
+        return Err(GetVersionDownloadInfoError::OperatingSystemFamilyNotSpecified);
+    }
+    if request.supported_hash_functions.is_empty() {
+        return Err(GetVersionDownloadInfoError::SupportedHashFunctionsNotSpecified);
+    }
+    for hash_function in &request.supported_hash_functions {
+        if matches!(
+            HashFunction::from_i32(*hash_function),
+            Some(HashFunction::Unspecified) | None
+        ) {
+            return Err(GetVersionDownloadInfoError::InvalidSupportedHashFunction);
+        }
     }
     Ok(())
 }
@@ -179,7 +249,9 @@ mod test {
         version_info.version_number.as_mut().unwrap().major = None;
         assert_eq!(
             validate_version_info_message(&version_info),
-            Err(VersionInfoError::UnspecifiedMajorVersion)
+            Err(VersionInfoError::InvalidVersion(
+                SemanticVersionError::UnspecifiedMajorVersion
+            ))
         );
     }
 
@@ -189,7 +261,9 @@ mod test {
         version_info.version_number.as_mut().unwrap().minor = None;
         assert_eq!(
             validate_version_info_message(&version_info),
-            Err(VersionInfoError::UnspecifiedMinorVersion)
+            Err(VersionInfoError::InvalidVersion(
+                SemanticVersionError::UnspecifiedMinorVersion
+            ))
         );
     }
 
@@ -199,7 +273,9 @@ mod test {
         version_info.version_number.as_mut().unwrap().patch = None;
         assert_eq!(
             validate_version_info_message(&version_info),
-            Err(VersionInfoError::UnspecifiedPatchVersion)
+            Err(VersionInfoError::InvalidVersion(
+                SemanticVersionError::UnspecifiedPatchVersion
+            ))
         );
     }
 
@@ -305,6 +381,90 @@ mod test {
         assert_eq!(
             validate_download_url("https://downloads.buri-lang.dev:8080"),
             Err(DownloadUrlError::IncludesPort)
+        );
+    }
+
+    fn create_valid_get_version_download_info_request() -> GetVersionDownloadInfoRequest {
+        let mut request = GetVersionDownloadInfoRequest::default();
+        request.set_program(Program::VersionManager);
+        request.version = Some(get_version_download_info_request::Version::Channel(
+            Channel::Latest.into(),
+        ));
+        request.set_architecture(Architecture::Arm64);
+        request.set_operating_system_family(OperatingSystemFamily::Linux);
+        request
+            .supported_hash_functions
+            .push(HashFunction::Sha256.into());
+        request
+    }
+
+    #[test]
+    fn valid_get_version_download_info_request_succeeds() {
+        assert_eq!(
+            validate_get_version_download_info_request(
+                &create_valid_get_version_download_info_request()
+            ),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_request_must_include_program() {
+        let mut request = create_valid_get_version_download_info_request();
+        request.set_program(Program::Unspecified);
+        assert_eq!(
+            validate_get_version_download_info_request(&request),
+            Err(GetVersionDownloadInfoError::ProgramNotSpecified)
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_request_must_include_version() {
+        let mut request = create_valid_get_version_download_info_request();
+        request.version = None;
+        assert_eq!(
+            validate_get_version_download_info_request(&request),
+            Err(GetVersionDownloadInfoError::VersionNotSpecified)
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_request_must_include_architecture() {
+        let mut request = create_valid_get_version_download_info_request();
+        request.set_architecture(Architecture::Unspecified);
+        assert_eq!(
+            validate_get_version_download_info_request(&request),
+            Err(GetVersionDownloadInfoError::ArchitectureNotSpecified)
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_request_must_include_operating_system_family() {
+        let mut request = create_valid_get_version_download_info_request();
+        request.set_operating_system_family(OperatingSystemFamily::Unspecified);
+        assert_eq!(
+            validate_get_version_download_info_request(&request),
+            Err(GetVersionDownloadInfoError::OperatingSystemFamilyNotSpecified)
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_request_must_include_supported_hash_functions() {
+        let mut request = create_valid_get_version_download_info_request();
+        request.supported_hash_functions.clear();
+        assert_eq!(
+            validate_get_version_download_info_request(&request),
+            Err(GetVersionDownloadInfoError::SupportedHashFunctionsNotSpecified)
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_request_must_include_supported_hash_function() {
+        let mut request = create_valid_get_version_download_info_request();
+        request.supported_hash_functions[0] = HashFunction::Unspecified.into();
+        assert_eq!(
+            validate_get_version_download_info_request(&request),
+            Err(GetVersionDownloadInfoError::InvalidSupportedHashFunction)
         );
     }
 }

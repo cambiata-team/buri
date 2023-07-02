@@ -4,10 +4,11 @@ members = [
     "cli",
     "protos",
     "thor",
-    "utils/target",
     "utils/build-graph",
-    "utils/test",
     "utils/files",
+    "utils/macros",
+    "utils/target",
+    "utils/test",
     "version-api",
 ]
 
@@ -28,6 +29,6 @@ worker = "0.0.17"
 
 [profile.release]
 strip = true
-opt-level = 3
+opt-level = 2
 lto = true
 codegen-units = 1

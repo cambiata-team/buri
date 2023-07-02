@@ -16,10 +16,8 @@ enum Program {
 // A CPU architecture.
 enum Architecture {
   ARCHITECTURE_UNSPECIFIED = 0;
-  ARCHITECTURE_X86 = 1;
-  ARCHITECTURE_X86_64 = 2;
-  ARCHITECTURE_ARM = 3;
-  ARCHITECTURE_ARM64 = 4;
+  ARCHITECTURE_X86_64 = 1;
+  ARCHITECTURE_ARM64 = 2;
 }
 
 // An operating system family. In this context, a "family" refers to a set of
@@ -58,6 +56,20 @@ message SemanticVersion {
 enum HashFunction {
   HASH_FUNCTION_UNSPECIFIED = 0;
   HASH_FUNCTION_SHA256 = 1;
+}
+
+// They key used in the KV database to request specific version information.
+message VersionInfoKey {
+  Program program = 1;
+  oneof version {
+    // The channel from which to retrieve version information.
+    Channel channel = 2;
+
+    // The specific version to retrieve information about.
+    SemanticVersion version_number = 3;
+  }
+  Architecture architecture = 4;
+  OperatingSystemFamily operating_system_family = 5;
 }
 
 // Information about a specific version of an executable.
@@ -112,7 +124,7 @@ message GetVersionDownloadInfoRequest {
 
   // A list of all hash functions supported by the client that can be used to
   // verify the checksum.
-  HashFunction supported_hash_functions = 6;
+  repeated HashFunction supported_hash_functions = 6;
 }
 
 // A response to a GetVersionInfoRequest.
