@@ -44,24 +44,17 @@ impl Target {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::parse::parse_target;
 
     #[test]
     fn test_target() {
-        let target = Target {
-            name: TargetName::Specific("test".to_string()),
-            directories: vec!["foo".to_string(), "bar".to_string()],
-        };
+        let target = parse_target("//foo/bar:test").unwrap();
         assert_eq!(target.to_string(), "//foo/bar:test");
     }
 
     #[test]
     fn test_no_directories() {
-        let target = Target {
-            name: TargetName::Specific("test".to_string()),
-            directories: vec![],
-        };
+        let target = parse_target("//:test").unwrap();
         assert_eq!(target.to_string(), "//:test");
     }
 
