@@ -4,8 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-protobuf.workspace = true
+base64.workspace = true
+bytes.workspace = true
+prost.workspace = true
+url.workspace = true
 
 [build-dependencies]
-protobuf-codegen.workspace = true
-protoc-bin-vendored.workspace = true
+protobuf-src.workspace = true
+prost-build.workspace = true

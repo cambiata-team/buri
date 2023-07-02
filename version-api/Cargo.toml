@@ -5,15 +5,13 @@ edition = "2021"
 
 [dependencies]
 worker.workspace = true
+prost.workspace = true
+protos = { path = "../protos" }
+
 
 # https://github.com/rustwasm/wasm-pack/issues/1247
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
-
-[profile.release]
-lto = true
-strip = true
-codegen-units = 1
 
 [lib]
 crate-type = ["cdylib", "rlib"]

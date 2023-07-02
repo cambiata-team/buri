@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+package version;
+
+// The name of the executable to download.
 enum Program {
   PROGRAM_UNSPECIFIED = 0;
 
@@ -46,15 +49,15 @@ enum Channel {
 
 // Encodes a semantic version.
 message SemanticVersion {
-  uint32 major = 1;
-  uint32 minor = 2;
-  uint32 patch = 3;
+  optional uint32 major = 1;
+  optional uint32 minor = 2;
+  optional uint32 patch = 3;
 }
 
 // A recognized hash function used as a checksum.
 enum HashFunction {
   HASH_FUNCTION_UNSPECIFIED = 0;
-  HASH_FUNCTION_SHA512 = 1;
+  HASH_FUNCTION_SHA256 = 1;
 }
 
 // Information about a specific version of an executable.
@@ -85,7 +88,7 @@ message VersionInfo {
   // least one valid download link. If a Version supplies multiple download
   // links, a client may attempt to download the binary executable from any of
   // them.
-  repeated string download_links = 6;
+  repeated string download_urls = 6;
 }
 
 // A request to retrieve information about a specific version of an executable.
@@ -109,13 +112,13 @@ message GetVersionDownloadInfoRequest {
 
   // A list of all hash functions supported by the client that can be used to
   // verify the checksum.
-  repeated HashFunction supported_hash_functions = 6;
+  HashFunction supported_hash_functions = 6;
 }
 
 // A response to a GetVersionInfoRequest.
 message GetVersionDownloadInfoResponse {
-  // The version information for the requested version.
-  repeated string download_links = 1;
+  // Where to download the executable version.
+  repeated string download_urls = 1;
 
   // The cryptographic checksum of the executable.
   Checksum checksum = 2;
