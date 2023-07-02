@@ -2,14 +2,14 @@ use kv::create_version_info_key_from_request;
 use macros::return_if_error;
 use prost::Message;
 use protos::{
-    encode_message_to_bytes,
+    decode_base_64_to_bytes, encode_message_to_bytes,
     version::{
         validate_get_version_download_info_request, validate_version_info_message,
         GetVersionDownloadInfoRequest, GetVersionDownloadInfoResponse, VersionInfo,
     },
 };
 use verifications::does_version_info_match_request;
-use worker::{event, Context, Env, Request, Response, Result, Router};
+use worker::{event, Cache, Context, Env, Request, Response, Result, Router};
 
 mod kv;
 mod verifications;
@@ -22,8 +22,19 @@ async fn main(_: Request, _: Env, _: Context) -> Result<Response> {
         .post_async("/", |_, _| async move {
             Response::ok("Please download the Buri CLI. This url does not host a website.")
         })
-        .post_async("/getVersionDownloadInfo", |mut req, ctx| async move {
-            let data = req.bytes().await?;
+        .get_async("/getVersionDownloadInfo", |req, ctx| async move {
+            let cache = Cache::default();
+            let url = req.url()?;
+            let cache_key = url.to_string();
+            let cached_response = cache.get(&cache_key, false).await?;
+            if let Some(cached_response) = cached_response {
+                return Ok(cached_response);
+            }
+            let query = &return_if_error!(
+                url.query().ok_or("no query parameters"),
+                Response::error("Bad request", 400)
+            )[2..]; // Remove the leading "?q=".
+            let data = decode_base_64_to_bytes(query);
             let request = return_if_error!(
                 GetVersionDownloadInfoRequest::decode(data.as_slice()),
                 Response::error("Bad request", 400)
@@ -53,7 +64,14 @@ async fn main(_: Request, _: Env, _: Context) -> Result<Response> {
                 download_urls: version_info.download_urls,
                 checksum: Some(version_info.checksums[0].clone()),
             };
-            Response::from_bytes(encode_message_to_bytes(&response))
+            let mut response = Response::from_bytes(encode_message_to_bytes(&response))?;
+            // Cache for 1 hour.
+            response
+                .headers_mut()
+                .set("cache-control", "s-maxage=3600")?;
+            let cache_key = url.to_string();
+            cache.put(&cache_key, response.cloned()?).await?;
+            Ok(response)
         });
     Response::ok("I can update this with just a push!")
 }
