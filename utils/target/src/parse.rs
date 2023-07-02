@@ -14,6 +14,7 @@ fn is_valid_part_character(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_' || c == '-'
 }
 
+// TODO: convert this into a standard state machine to simplify the code.
 pub fn parse_target(str: &str) -> Result<Target, TargetParseError> {
     if str.len() < 3 {
         return Err(TargetParseError::TooShort);
