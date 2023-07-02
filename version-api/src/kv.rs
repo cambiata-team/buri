@@ -1,10 +1,12 @@
 use protos::{
     encode_message_to_base_64,
     version::{
-        get_version_download_info_request, version_info_key, GetVersionDownloadInfoRequest,
-        VersionInfoKey,
+        get_version_download_info_request, version_info_key, Channel, Checksum,
+        GetVersionDownloadInfoRequest, HashFunction, SemanticVersion, VersionInfo, VersionInfoKey,
     },
 };
+
+use crate::parse_release::BinaryInfo;
 
 pub fn create_version_info_key_from_request(request: &GetVersionDownloadInfoRequest) -> String {
     let mut key = VersionInfoKey::default();
@@ -24,10 +26,49 @@ pub fn create_version_info_key_from_request(request: &GetVersionDownloadInfoRequ
     encode_message_to_base_64(&key)
 }
 
+pub fn get_keys_from_binary_info(info: &BinaryInfo, version: &SemanticVersion) -> (String, String) {
+    let mut latest_key = VersionInfoKey::default();
+    latest_key.set_program(info.program);
+    latest_key.set_architecture(info.architecture);
+    latest_key.set_operating_system_family(info.operating_system_family);
+    latest_key.version = Some(protos::version::version_info_key::Version::Channel(
+        Channel::Latest.into(),
+    ));
+    let mut version_key = latest_key.clone();
+    version_key.version = Some(protos::version::version_info_key::Version::VersionNumber(
+        version.clone(),
+    ));
+    (
+        encode_message_to_base_64(&latest_key),
+        encode_message_to_base_64(&version_key),
+    )
+}
+
+pub fn create_version_info(
+    info: &BinaryInfo,
+    version: &SemanticVersion,
+    sha256: &str,
+) -> VersionInfo {
+    let mut version_info = VersionInfo::default();
+    version_info.set_program(info.program);
+    version_info.set_architecture(info.architecture);
+    version_info.set_operating_system_family(info.operating_system_family);
+    version_info.version_number = Some(version.clone());
+    let mut checksum = Checksum::default();
+    checksum.set_hash_function(HashFunction::Sha256);
+    checksum.checksum = sha256.to_string();
+    version_info.checksums = vec![checksum];
+    version_info.download_urls = vec![info.download_url.clone()];
+    version_info
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-    use protos::version::{Architecture, Channel, OperatingSystemFamily, Program, SemanticVersion};
+    use protos::version::{
+        validate_version_info_message, Architecture, Channel, OperatingSystemFamily, Program,
+        SemanticVersion,
+    };
 
     fn create_request() -> GetVersionDownloadInfoRequest {
         let mut request = GetVersionDownloadInfoRequest::default();
@@ -124,5 +165,43 @@ mod test {
             create_version_info_key_from_request(&v1_request),
             create_version_info_key_from_request(&v3_request),
         );
+    }
+
+    #[test]
+    fn test_get_keys_from_binary_info() {
+        let info = BinaryInfo {
+            program: Program::VersionManager,
+            architecture: Architecture::Arm64,
+            operating_system_family: OperatingSystemFamily::Darwin,
+            download_url: "https://downloads.buri-lang.dev".to_string(),
+            hash_download_url: "https://downloads.buri-lang.dev/hash".to_string(),
+        };
+        let version = SemanticVersion {
+            major: Some(1),
+            minor: Some(0),
+            patch: Some(0),
+        };
+        let (latest_key, version_key) = get_keys_from_binary_info(&info, &version);
+        assert_eq!(latest_key, "CAIQASACKAI=");
+        assert_eq!(version_key, "CAIaBggBEAAYACACKAI=");
+    }
+
+    #[test]
+    fn test_create_version_info() {
+        let info = BinaryInfo {
+            program: Program::VersionManager,
+            architecture: Architecture::Arm64,
+            operating_system_family: OperatingSystemFamily::Darwin,
+            download_url: "https://downloads.buri-lang.dev".to_string(),
+            hash_download_url: "https://downloads.buri-lang.dev/hash".to_string(),
+        };
+        let version = SemanticVersion {
+            major: Some(1),
+            minor: Some(0),
+            patch: Some(0),
+        };
+        let sha256 = "1234567890abcdef";
+        let version_info = create_version_info(&info, &version, sha256);
+        assert!(validate_version_info_message(&version_info).is_ok());
     }
 }

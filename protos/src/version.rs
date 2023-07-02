@@ -172,6 +172,50 @@ pub fn validate_get_version_download_info_request(
     Ok(())
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ParseSemanticVersionError {
+    MissingMajorVersion,
+    MissingMinorVersion,
+    MissingPatchVersion,
+    InvalidMajorVersion(std::num::ParseIntError),
+    InvalidMinorVersion(std::num::ParseIntError),
+    InvalidPatchVersion(std::num::ParseIntError),
+}
+
+// Input can be either format: "v.1.2.3" or "1.2.3"
+pub fn parse_semantic_version_from_string(
+    input: &str,
+) -> Result<SemanticVersion, ParseSemanticVersionError> {
+    let mut semantic_version = SemanticVersion::default();
+    let mut input = input;
+    if input.starts_with('v') {
+        input = &input[1..];
+    }
+    let mut split = input.split('.');
+    semantic_version.major = Some(
+        split
+            .next()
+            .ok_or(ParseSemanticVersionError::MissingMajorVersion)?
+            .parse()
+            .map_err(ParseSemanticVersionError::InvalidMajorVersion)?,
+    );
+    semantic_version.minor = Some(
+        split
+            .next()
+            .ok_or(ParseSemanticVersionError::MissingMinorVersion)?
+            .parse()
+            .map_err(ParseSemanticVersionError::InvalidMinorVersion)?,
+    );
+    semantic_version.patch = Some(
+        split
+            .next()
+            .ok_or(ParseSemanticVersionError::MissingPatchVersion)?
+            .parse()
+            .map_err(ParseSemanticVersionError::InvalidPatchVersion)?,
+    );
+    Ok(semantic_version)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -332,6 +376,15 @@ mod test {
     }
 
     #[test]
+    fn github_download_url_is_valid() {
+        assert_eq!(
+            // An actual download URL from an uploaded asset on GitHub.
+            validate_download_url("https://github.com/cambiata-team/buri/releases/download/0.2.0/cli-aarch64-apple-darwin.tar.gz"),
+            Ok(())
+        );
+    }
+
+    #[test]
     fn download_url_must_be_valid() {
         assert_eq!(
             validate_download_url("not a url"),
@@ -466,5 +519,61 @@ mod test {
             validate_get_version_download_info_request(&request),
             Err(GetVersionDownloadInfoError::InvalidSupportedHashFunction)
         );
+    }
+
+    #[test]
+    fn parse_semantic_version_from_string_parses_major_version() {
+        assert_eq!(
+            parse_semantic_version_from_string("1.0.42").unwrap().major,
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn parse_semantic_version_from_string_parses_minor_version() {
+        assert_eq!(
+            parse_semantic_version_from_string("1.0.42").unwrap().minor,
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn parse_semantic_version_from_string_parses_patch_version() {
+        assert_eq!(
+            parse_semantic_version_from_string("1.0.42").unwrap().patch,
+            Some(42)
+        );
+    }
+
+    #[test]
+    fn parse_semantic_version_from_string_parses_major_version_with_preceding_v() {
+        assert_eq!(
+            parse_semantic_version_from_string("v1.0.42").unwrap().major,
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn parse_semantic_version_from_string_parses_minor_version_with_preceding_v() {
+        assert_eq!(
+            parse_semantic_version_from_string("v1.0.42").unwrap().minor,
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn parse_semantic_version_from_string_parses_patch_version_with_preceding_v() {
+        assert_eq!(
+            parse_semantic_version_from_string("v1.0.42").unwrap().patch,
+            Some(42)
+        );
+    }
+
+    #[test]
+    fn parse_semantic_version_from_string_errors_with_invalid_input() {
+        let tests = ["1.0", "1", "v1", "v1.0", "hello world", "    v1.2.3"];
+        for test in tests.iter() {
+            assert!(parse_semantic_version_from_string(test).is_err());
+        }
     }
 }

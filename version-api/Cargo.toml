@@ -7,6 +7,8 @@ edition = "2021"
 macros = { path = "../utils/macros" }
 prost.workspace = true
 protos = { path = "../protos" }
+serde.workspace = true
+serde_json.workspace = true
 worker.workspace = true
 
 
