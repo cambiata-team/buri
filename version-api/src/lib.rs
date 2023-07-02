@@ -15,7 +15,7 @@ mod kv;
 mod verifications;
 
 #[event(fetch)]
-async fn main(_: Request, _: Env, _: Context) -> Result<Response> {
+async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     let router = Router::new();
 
     router
@@ -72,6 +72,10 @@ async fn main(_: Request, _: Env, _: Context) -> Result<Response> {
             let cache_key = url.to_string();
             cache.put(&cache_key, response.cloned()?).await?;
             Ok(response)
-        });
-    Response::ok("I can update this with just a push!")
+        })
+        .or_else_any_method("/*catchall", |_, _| {
+            Response::error("This page does not exist", 404)
+        })
+        .run(req, env)
+        .await
 }
