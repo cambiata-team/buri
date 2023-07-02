@@ -50,7 +50,7 @@ fn topological_sort_helper(
     let build_file = resolve_build_file(&current_target, root)?;
     let mut current_library: Option<&Library> = None;
 
-    let target_name_string = current_target.name.to_string();
+    let target_name_string = current_target.name();
     if let Some(libraries) = &build_file.library {
         for library in libraries {
             if library.name == target_name_string {

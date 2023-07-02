@@ -1,25 +1,23 @@
+use files::build_file::BUILD_FILE_NAME;
 use std::fmt;
 
-use files::build_file::BUILD_FILE_NAME;
+pub(crate) type Index = u16;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum TargetName {
-    Specific(String),
+pub(crate) enum TargetName {
+    /// Target name starts Index characters from the end of the raw string
+    /// not including the colon.
+    Specific(Index),
     // TODO: support recursive targets
 }
 
-impl fmt::Display for TargetName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            TargetName::Specific(name) => write!(f, "{}", name),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
+// Everything is saved as indices to reduce memory and heap allocations.
 pub struct Target {
-    pub name: TargetName,
-    pub directories: Vec<String>,
+    pub(crate) name: TargetName,
+    pub(crate) directories_start: Index,
+    pub(crate) directories_end: Index,
+    pub(crate) raw_text: String,
     // TODO: support relative targets
 }
 
@@ -28,17 +26,26 @@ impl fmt::Display for Target {
         write!(
             f,
             "//{}:{}",
-            self.directories.join("/"),
-            match &self.name {
-                TargetName::Specific(name) => name,
-            }
+            &self.raw_text[self.directories_start as usize..self.directories_end as usize],
+            self.name()
         )
     }
 }
 
 impl Target {
     pub fn build_file_location(&self) -> String {
-        format!("{}/{}", self.directories.join("/"), BUILD_FILE_NAME)
+        format!("{}/{}", &self.get_directories(), BUILD_FILE_NAME)
+    }
+
+    pub fn get_directories(&self) -> &str {
+        println!("{}", self.raw_text);
+        &self.raw_text[self.directories_start as usize..self.directories_end as usize]
+    }
+
+    pub fn name(&self) -> &str {
+        match &self.name {
+            TargetName::Specific(index) => &self.raw_text[*index as usize..],
+        }
     }
 }
 
