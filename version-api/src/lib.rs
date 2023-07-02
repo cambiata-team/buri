@@ -5,7 +5,7 @@ use parse_release::{
 };
 use prost::Message;
 use protos::{
-    decode_base_64_to_bytes, encode_message_to_bytes,
+    decode_base_64_to_bytes, encode_message_to_base_64, encode_message_to_bytes,
     version::{
         parse_semantic_version_from_string, validate_get_version_download_info_request,
         validate_version_info_message, GetVersionDownloadInfoRequest,
@@ -51,10 +51,11 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             );
             let key = create_version_info_key_from_request(&request);
             let version_kv = ctx.kv("VERSIONS")?;
-            let version_info_bytes = return_if_error!(
-                version_kv.get(&key).bytes().await?.ok_or("Not found"),
+            let version_info_base64 = return_if_error!(
+                version_kv.get(&key).text().await?.ok_or("Not found"),
                 Response::error("Not found", 404)
             );
+            let version_info_bytes = decode_base_64_to_bytes(&version_info_base64);
             let version_info = return_if_error!(
                 VersionInfo::decode(version_info_bytes.as_slice()),
                 Response::error("Internal error", 500)
@@ -140,11 +141,11 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
 
                 let version_kv = ctx.kv("VERSIONS")?;
                 version_kv
-                    .put_bytes(&latest_key, &encode_message_to_bytes(&version_info))?
+                    .put(&latest_key, &encode_message_to_base_64(&version_info))?
                     .execute()
                     .await?;
                 version_kv
-                    .put_bytes(&version_key, &encode_message_to_bytes(&version_info))?
+                    .put(&version_key, &encode_message_to_base_64(&version_info))?
                     .execute()
                     .await?;
             }
