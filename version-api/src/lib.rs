@@ -12,9 +12,8 @@ use protos::{
         GetVersionDownloadInfoResponse, VersionInfo,
     },
 };
-use std::str::FromStr;
 use verifications::does_version_info_match_request;
-use worker::{event, Cache, Context, Env, Fetch, Request, Response, Result, Router, Url};
+use worker::{event, Cache, Context, Env, Fetch, Method, Request, Response, Result, Router};
 
 mod kv;
 mod parse_release;
@@ -102,12 +101,9 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                 Response::error(format!("Bad request - cannot parse body: {body}"), 400)
             )
             .release_id;
-            let raw_release_data = Fetch::Url(Url::from_str(&format!(
+            let raw_release_data = fetch(&format!(
                 "https://api.github.com/repos/cambiata-team/buri/releases/{release_id}"
-            ))?)
-            .send()
-            .await?
-            .text()
+            ))
             .await?;
             let release_data: Release = return_if_error!(
                 serde_json::from_str(&raw_release_data),
@@ -132,11 +128,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                 .filter_map(parse_asset_to_binary_info)
                 .collect();
             for info in binary_infos {
-                let sha_file = Fetch::Url(Url::from_str(&info.hash_download_url)?)
-                    .send()
-                    .await?
-                    .text()
-                    .await?;
+                let sha_file = fetch(&info.hash_download_url).await?;
                 let sha256 = get_hash_from_sha256_file(&sha_file);
                 let version_info = create_version_info(&info, &version, sha256);
                 let (latest_key, version_key) = get_keys_from_binary_info(&info, &version);
@@ -163,4 +155,11 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
         })
         .run(req, env)
         .await
+}
+
+async fn fetch(url: &str) -> Result<String> {
+    let mut request = Request::new(url, Method::Get)?;
+    request.headers_mut()?.set("User-Agent", "cambiata-team")?;
+    let body = Fetch::Request(request).send().await?.text().await?;
+    Ok(body)
 }
