@@ -38,7 +38,7 @@
 #   Read through the entire script and all it's comments to ensure they
 #   remain up to date with your changes.
 
-# Exit if any command fails.
+# Exit if any command fails (specific, if it has a non-zero exit code).
 # https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#index-set
 set -e
 
