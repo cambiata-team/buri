@@ -1,15 +1,57 @@
 #!/bin/sh
 
-set -e
+#
+# Purpose
+#
+# This script installs the latest version of the Buri CLI tool.
+#
+# Overview
+#
+# 1. Build up the URL to download the latest version of the CLI tool.
+#    This URL depends on your current operating system and architecture.
+# 2. Fetch the version number of the latest version of the CLI tool and
+#    store it in a configuration file. While this is not necessary for
+#    this script, the CLI tool itself will use this file when a user
+#    invokes it.
+# 3. Download the latest version of the CLI tool.
+# 4. Uncompress the file and move it to the correct location.
+# 5. Cleanup all temporary files and directories.
+#
+# Assumptions
+#
+# - No Windows builds.
+# - All latest builds are the same version.
+# - Failing is better than error handling.
+#
+# Contributing
+#
+# If you want to contribute to this script, please do! Just follow these
+# guidelines:
+#
+# - Before starting, read through the entire script to know what it does.
+# - Make sure the script is idempotent. The user should be able to run
+#   it multiple times, downloading the newest version of the CLI each time.
+# - Comment everything. Shell scripts are impossible to test, so comments
+#   are the only way future readers know contributors know for sure your
+#   intent.
+# - Update all comments. Outdated comments are worse than no comments.
+#   Read through the entire script and all it's comments to ensure they
+#   remain up to date with your changes.
 
-ARCHITECTURE=`uname -m`
-OS=`uname`
-FILENAME="cli-"
-BASE_DOWNLOAD_URL="https://github.com/cambiata-team/buri-go/releases/latest/download/"
+# Exit if any command fails.
+# https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#index-set
+set -e
 
 #
 # Build up the file name
 #
+
+ARCHITECTURE=`uname -m`
+OS=`uname`
+# The name of the rust crate is CLI, so the file name starts with CLI
+# even though the user will invoke it with `buri`.
+FILENAME="cli-"
+BASE_DOWNLOAD_URL="https://github.com/cambiata-team/buri-go/releases/latest/download/"
 
 # Add the architecture to the file name
 if [ "${ARCHITECTURE}" == "arm64" ]
@@ -41,6 +83,7 @@ DOWNLOAD_URL="${BASE_DOWNLOAD_URL}${FILENAME}.tar.gz"
 #
 # Initialize variables to be used later
 #
+
 # Where we download the cli to.
 DOWNLOAD_LOCATION=$(mktemp)
 # Where we uncompress the cli into.
