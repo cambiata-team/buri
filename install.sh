@@ -134,4 +134,5 @@ rm -rf $UNCOMPRESSED_TEMP_DIRECTORY
 #
 echo ""
 echo "buri was successfully installed to ${BURI_LOCATION}"
-echo "Run \`buri --help\` to get started!"
+echo "Run \`buri --help\` to get help."
+echo "Run \`buri init\` to get started!"
