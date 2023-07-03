@@ -102,7 +102,7 @@ mod test {
             .build();
         let root: VfsPath = PhysicalFS::new(std::env::current_dir().unwrap()).into();
         let result = main_impl(&root, &mut vio, vec!["build".to_string()]);
-        assert_eq!(result, Err(CliError::MustSpecifyACommand));
+        assert_eq!(result, Err(CliError::MustInitialize));
         assert_eq!(vio.get_actual(), vio.get_expected());
     }
 }
