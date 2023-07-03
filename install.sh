@@ -32,16 +32,15 @@ URL="https://github.com/cambiata-team/buri-go/releases/latest/download/"
 URL="${URL}${FILENAME}.tar.gz"
 
 echo "Downloading buri... $URL"
-curl --fail --location --progress-bar --output /usr/local/bin/buri-tmp $URL
-cd /usr/local/bin
-if [ "${OS}" == "Windows" ]
-then
-    unzip -a buri-tmp
-else
-    tar -xvf buri-tmp
-fi
-rm /usr/local/bin/buri-tmp
-mv /usr/local/bin/cli /usr/local/bin/buri
-chmod +x /usr/local/bin/buri
-echo "buri was successfully installed to /usr/local/bin/buri"
+TEMP_FILE=$(mktemp)
+TEMP_DIRECTORY=$(mktemp -d)
+BURI_LOCATION=/usr/local/bin/buri
+curl --fail --location --progress-bar --output $TEMP_FILE $URL
+tar -xvf $TEMP_FILE -C $TEMP_DIRECTORY
+mv $TEMP_DIRECTORY/cli $BURI_LOCATION
+rm $TEMP_FILE
+rm -rf $TEMP_DIRECTORY
+chmod +x $BURI_LOCATION
+echo ""
+echo "buri was successfully installed to ${BURI_LOCATION}"
 echo "Run \`buri --help\` to get started!"
