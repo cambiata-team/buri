@@ -1,5 +1,5 @@
 use files::{
-    version_file::{VersionFile, VERSION_FILE_NAME},
+    cli_config::{CliConfig, CLI_CONFIG_FILE_NAME},
     workspace_file::{WorkspaceFile, WORKSPACE_FILE_NAME},
 };
 use vfs::{VfsError, VfsPath};
@@ -38,15 +38,15 @@ fn create_workspace_file(
 }
 
 fn create_version_file(root: &VfsPath, vio: &mut impl VirtualIo) -> Result<(), VfsError> {
-    let version_file = root.join(VERSION_FILE_NAME)?;
+    let version_file = root.join(CLI_CONFIG_FILE_NAME)?;
     if version_file.exists()? {
         vio.println("Version file already exists, no need to create a new one.");
         return Ok(());
     }
-    let version = VersionFile::from_string("0.3.0").unwrap();
+    let version = CliConfig::from("buri_version=\"0.3.0\"").unwrap();
     let formatted_version_file = version.to_string();
 
-    root.join(VERSION_FILE_NAME)?
+    root.join(CLI_CONFIG_FILE_NAME)?
         .create_file()?
         .write_all(formatted_version_file.as_bytes())?;
     vio.println(format!("Created .{}", version_file.as_str()));
@@ -126,14 +126,14 @@ mod test {
         let root: VfsPath = MemoryFS::new().into();
         let mut vio = virtual_io::VioFakeBuilder::new().build();
         do_init(&root, &mut vio, &None).unwrap();
-        let workspace_file = root.join(VERSION_FILE_NAME).unwrap();
+        let workspace_file = root.join(CLI_CONFIG_FILE_NAME).unwrap();
         assert!(workspace_file.exists().unwrap());
     }
 
     #[test]
     fn does_not_overwrite_existing_version_file() {
         let root: VfsPath = MemoryFS::new().into();
-        root.join(VERSION_FILE_NAME)
+        root.join(CLI_CONFIG_FILE_NAME)
             .unwrap()
             .create_file()
             .unwrap()
@@ -141,7 +141,7 @@ mod test {
             .unwrap();
         let mut vio = virtual_io::VioFakeBuilder::new().build();
         create_version_file(&root, &mut vio).unwrap();
-        let version_file = root.join(VERSION_FILE_NAME).unwrap();
+        let version_file = root.join(CLI_CONFIG_FILE_NAME).unwrap();
         assert_eq!(version_file.read_to_string().unwrap(), "foo");
     }
 
@@ -149,7 +149,7 @@ mod test {
     fn prints_that_version_file_was_created() {
         let root: VfsPath = MemoryFS::new().into();
         let mut vio = virtual_io::VioFakeBuilder::new()
-            .expect_stdout("Created ./.buri-version\n")
+            .expect_stdout("Created ./.burirc\n")
             .build();
         create_version_file(&root, &mut vio).unwrap();
         assert_eq!(vio.get_actual(), vio.get_expected());
@@ -158,7 +158,7 @@ mod test {
     #[test]
     fn shows_error_if_version_file_exists() {
         let root: VfsPath = MemoryFS::new().into();
-        root.join(VERSION_FILE_NAME)
+        root.join(CLI_CONFIG_FILE_NAME)
             .unwrap()
             .create_file()
             .unwrap()
