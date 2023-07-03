@@ -1,16 +1,18 @@
 name: Bump version
 on:
   schedule:
-    - cron: "0 0 * * *"
+    # Every day at midnight pacific time
+    - cron: "0 7 * * *"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Bump version and push tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: patch
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+
+      # Create and push a new tag with the current date
+      - run: git tag -a ${{ steps.date.outputs.date }} -m "Nightly"
+      - run: git push origin ${{ steps.date.outputs.date }}
