@@ -8,6 +8,7 @@ base64.workspace = true
 bytes.workspace = true
 prost.workspace = true
 url.workspace = true
+version = { path = "../utils/version" }
 
 [build-dependencies]
 protobuf-src.workspace = true

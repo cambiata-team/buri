@@ -7,12 +7,12 @@ use prost::Message;
 use protos::{
     decode_base_64_to_bytes, encode_message_to_base_64, encode_message_to_bytes,
     version::{
-        normalize_version, validate_get_version_download_info_request,
-        validate_version_info_message, GetVersionDownloadInfoRequest,
-        GetVersionDownloadInfoResponse, VersionInfo,
+        validate_get_version_download_info_request, validate_version_info_message,
+        GetVersionDownloadInfoRequest, GetVersionDownloadInfoResponse, VersionInfo,
     },
 };
 use verifications::does_version_info_match_request;
+use version::{is_valid_version, normalize_version};
 use worker::{event, Cache, Context, Env, Fetch, Method, Request, Response, Result, Router};
 
 mod kv;
@@ -114,8 +114,11 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                 )
             );
             let version = normalize_version(release_data.tag_name);
-            if version.is_empty() {
-                return Response::error("Bad request - version is not specified", 400);
+            if !is_valid_version(version) {
+                return Response::error(
+                    "Bad request - version is not specified or is invalid",
+                    400,
+                );
             }
             let binary_infos: Vec<BinaryInfo> = release_data
                 .assets

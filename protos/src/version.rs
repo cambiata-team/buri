@@ -1,4 +1,5 @@
 use url::Url;
+use version::is_valid_version;
 
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
@@ -7,7 +8,7 @@ pub enum VersionInfoError {
     UnspecifiedProgram,
     UnspecifiedArchitecture,
     UnspecifiedOperatingSystemFamily,
-    UnspecifiedVersionNumber,
+    InvalidVersion,
     MissingChecksums,
     UnspecifiedHashFunction,
     EmptyChecksumHash,
@@ -67,8 +68,8 @@ pub fn validate_version_info_message(version_info: &VersionInfo) -> Result<(), V
     if version_info.operating_system_family() == OperatingSystemFamily::Unspecified {
         return Err(VersionInfoError::UnspecifiedOperatingSystemFamily);
     }
-    if version_info.version_number.is_empty() {
-        return Err(VersionInfoError::UnspecifiedVersionNumber);
+    if !is_valid_version(&version_info.version_number) {
+        return Err(VersionInfoError::InvalidVersion);
     }
     if version_info.checksums.is_empty() {
         return Err(VersionInfoError::MissingChecksums);
@@ -93,7 +94,7 @@ pub fn validate_version_info_message(version_info: &VersionInfo) -> Result<(), V
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum GetVersionDownloadInfoError {
     ProgramNotSpecified,
-    VersionNotSpecified,
+    InvalidVersion,
     ArchitectureNotSpecified,
     OperatingSystemFamilyNotSpecified,
     SupportedHashFunctionsNotSpecified,
@@ -112,16 +113,16 @@ pub fn validate_get_version_download_info_request(
                 Channel::from_i32(*channel),
                 Some(Channel::Unspecified) | None
             ) {
-                return Err(GetVersionDownloadInfoError::VersionNotSpecified);
+                return Err(GetVersionDownloadInfoError::InvalidVersion);
             }
         }
-        Some(get_version_download_info_request::Version::VersionNumber(semantic_version)) => {
-            if semantic_version.is_empty() {
-                return Err(GetVersionDownloadInfoError::VersionNotSpecified);
+        Some(get_version_download_info_request::Version::VersionNumber(version)) => {
+            if !is_valid_version(version) {
+                return Err(GetVersionDownloadInfoError::InvalidVersion);
             }
         }
         None => {
-            return Err(GetVersionDownloadInfoError::VersionNotSpecified);
+            return Err(GetVersionDownloadInfoError::InvalidVersion);
         }
     }
     if request.architecture() == Architecture::Unspecified {
@@ -152,15 +153,6 @@ pub enum ParseSemanticVersionError {
     InvalidMajorVersion(std::num::ParseIntError),
     InvalidMinorVersion(std::num::ParseIntError),
     InvalidPatchVersion(std::num::ParseIntError),
-}
-
-// Input can be either format: "v1.2.3" or "1.2.3" => normalize it to "1.2.3"
-pub fn normalize_version(input: &str) -> &str {
-    if let Some(stripped) = input.strip_prefix('v') {
-        stripped
-    } else {
-        input
-    }
 }
 
 #[cfg(test)]
@@ -226,7 +218,7 @@ mod test {
         version_info.version_number = "".to_string();
         assert_eq!(
             validate_version_info_message(&version_info),
-            Err(VersionInfoError::UnspecifiedVersionNumber)
+            Err(VersionInfoError::InvalidVersion)
         );
     }
 
@@ -384,7 +376,7 @@ mod test {
         request.version = None;
         assert_eq!(
             validate_get_version_download_info_request(&request),
-            Err(GetVersionDownloadInfoError::VersionNotSpecified)
+            Err(GetVersionDownloadInfoError::InvalidVersion)
         );
     }
 
@@ -426,20 +418,5 @@ mod test {
             validate_get_version_download_info_request(&request),
             Err(GetVersionDownloadInfoError::InvalidSupportedHashFunction)
         );
-    }
-
-    #[test]
-    fn remove_the_v_from_semantic_versions() {
-        assert_eq!(normalize_version("v1.0.42"), "1.0.42");
-    }
-
-    #[test]
-    fn semantic_versions_remain_unchanged() {
-        assert_eq!(normalize_version("1.0.42"), "1.0.42");
-    }
-
-    #[test]
-    fn normalize_version_works_with_date_based_versions() {
-        assert_eq!(normalize_version("2023-07-03"), "2023-07-03");
     }
 }

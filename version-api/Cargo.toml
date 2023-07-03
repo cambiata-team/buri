@@ -10,6 +10,7 @@ protos = { path = "../protos" }
 serde.workspace = true
 serde_json.workspace = true
 worker.workspace = true
+version = { path = "../utils/version" }
 
 
 # https://github.com/rustwasm/wasm-pack/issues/1247

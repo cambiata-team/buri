@@ -9,6 +9,7 @@ members = [
     "utils/macros",
     "utils/target",
     "utils/test",
+    "utils/version",
     "version-api",
 ]
 

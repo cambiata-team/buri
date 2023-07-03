@@ -742,6 +742,7 @@ dependencies = [
  "prost-build",
  "protobuf-src",
  "url",
+ "version",
 ]
 
 [[package]]
@@ -1068,6 +1069,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
+name = "version"
+version = "0.1.0"
+
+[[package]]
 name = "version-api"
 version = "0.1.0"
 dependencies = [
@@ -1076,6 +1081,7 @@ dependencies = [
  "protos",
  "serde",
  "serde_json",
+ "version",
  "worker",
 ]
 
