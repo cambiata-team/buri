@@ -15,18 +15,16 @@ pub(crate) enum TargetName {
 // Everything is saved as indices to reduce memory and heap allocations.
 pub struct Target {
     pub(crate) name: TargetName,
-    pub(crate) directories_start: Index,
     pub(crate) directories_end: Index,
     pub(crate) raw_text: String,
-    // TODO: support relative targets
 }
 
 impl fmt::Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "//{}:{}",
-            &self.raw_text[self.directories_start as usize..self.directories_end as usize],
+            "{}:{}",
+            &self.raw_text[..self.directories_end as usize],
             self.name()
         )
     }
@@ -39,7 +37,7 @@ impl Target {
 
     pub fn get_directories(&self) -> &str {
         println!("{}", self.raw_text);
-        &self.raw_text[self.directories_start as usize..self.directories_end as usize]
+        &self.raw_text[..self.directories_end as usize]
     }
 
     pub fn name(&self) -> &str {
@@ -55,22 +53,22 @@ mod tests {
 
     #[test]
     fn test_target() {
-        let target = parse_target("//foo/bar:test").unwrap();
-        assert_eq!(target.to_string(), "//foo/bar:test");
+        let target = parse_target("foo/bar:test").unwrap();
+        assert_eq!(target.to_string(), "foo/bar:test");
     }
 
     #[test]
     fn test_no_directories() {
-        let target = parse_target("//:test").unwrap();
-        assert_eq!(target.to_string(), "//:test");
+        let target = parse_target(":test").unwrap();
+        assert_eq!(target.to_string(), ":test");
     }
 
     #[test]
     fn test_build_file_location() {
         let tests = [
-            ["//foo", "foo/BUILD.toml"],
-            ["//foo:bar", "foo/BUILD.toml"],
-            ["//foo/bar", "foo/bar/BUILD.toml"],
+            ["foo", "foo/BUILD.toml"],
+            ["foo:bar", "foo/BUILD.toml"],
+            ["foo/bar", "foo/bar/BUILD.toml"],
         ];
         for test in tests.iter() {
             let target = parse_target(test[0]).unwrap();

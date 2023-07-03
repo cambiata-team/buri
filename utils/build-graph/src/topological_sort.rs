@@ -116,7 +116,7 @@ mod test {
     #[test]
     fn errors_if_build_file_does_not_exist() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         let result = topologically_sort_dep_graph(target, &root);
         assert!(matches!(result, Err(DependencySortError::VfsError(_))));
     }
@@ -124,7 +124,7 @@ mod test {
     #[test]
     fn errors_if_build_file_does_not_contain_target() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         create_test_file(&root, "foo/BUILD.toml", b"");
         let result = topologically_sort_dep_graph(target, &root);
         println!("{:?}", result);
@@ -137,7 +137,7 @@ mod test {
     #[test]
     fn only_sorted_one_target_if_target_has_no_dependencies() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
@@ -156,14 +156,14 @@ mod test {
     #[test]
     fn errors_if_dependency_build_file_does_not_exist() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"bar\"
-            dependencies = [\"//baz:qux\"]
+            dependencies = [\"baz:qux\"]
             ",
         );
         let result = topologically_sort_dep_graph(target, &root);
@@ -173,14 +173,14 @@ mod test {
     #[test]
     fn errors_if_dependency_build_file_does_not_include_target() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"bar\"
-            dependencies = [\"//fizz:buzz\"]
+            dependencies = [\"fizz:buzz\"]
             ",
         );
         create_test_file(&root, "fizz/BUILD.toml", b"");
@@ -194,14 +194,14 @@ mod test {
     #[test]
     fn adds_dependency_to_build_graph() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"bar\"
-            dependencies = [\"//fizz:buzz\"]
+            dependencies = [\"fizz:buzz\"]
             ",
         );
         create_test_file(
@@ -219,14 +219,14 @@ mod test {
     #[test]
     fn traverses_multiple_build_files() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"bar\"
-            dependencies = [\"//fizz/buzz:qux\", \"//hello:world\"]
+            dependencies = [\"fizz/buzz:qux\", \"hello:world\"]
             ",
         );
         create_test_file(
@@ -252,14 +252,14 @@ mod test {
     #[test]
     fn traverses_multiple_targets_in_same_build_file() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:bar").unwrap();
+        let target = parse_target("foo:bar").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"bar\"
-            dependencies = [\"//fizz/buzz:qux\", \"//fizz/buzz:world\"]
+            dependencies = [\"fizz/buzz:qux\", \"fizz/buzz:world\"]
             ",
         );
         create_test_file(
@@ -280,22 +280,22 @@ mod test {
     #[test]
     fn diamond_dependency_produces_one_node() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:a").unwrap();
+        let target = parse_target("foo:a").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"a\"
-            dependencies = [\"//foo:b\", \"//foo:c\"]
+            dependencies = [\"foo:b\", \"foo:c\"]
 
             [[library]]
             name = \"b\"
-            dependencies = [\"//foo:d\"]
+            dependencies = [\"foo:d\"]
 
             [[library]]
             name = \"c\"
-            dependencies = [\"//foo:d\"]
+            dependencies = [\"foo:d\"]
 
             [[library]]
             name = \"d\"
@@ -309,18 +309,18 @@ mod test {
     #[test]
     fn errors_with_dependency_cycle() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:a").unwrap();
+        let target = parse_target("foo:a").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"a\"
-            dependencies = [\"//foo:b\"]
+            dependencies = [\"foo:b\"]
 
             [[library]]
             name = \"b\"
-            dependencies = [\"//foo:a\"]
+            dependencies = [\"foo:a\"]
             ",
         );
         let result = topologically_sort_dep_graph(target, &root);
@@ -333,22 +333,22 @@ mod test {
     #[test]
     fn topologically_sorts_dependencies() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:a").unwrap();
+        let target = parse_target("foo:a").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"a\"
-            dependencies = [\"//foo:b\", \"//foo:c\"]
+            dependencies = [\"foo:b\", \"foo:c\"]
 
             [[library]]
             name = \"b\"
-            dependencies = [\"//foo:d\"]
+            dependencies = [\"foo:d\"]
 
             [[library]]
             name = \"c\"
-            dependencies = [\"//foo:d\"]
+            dependencies = [\"foo:d\"]
 
             [[library]]
             name = \"d\"
@@ -358,29 +358,25 @@ mod test {
         assert_eq!(graph.len(), 4);
 
         // first because it does not have any dependencies
-        assert_eq!(graph[0].target.to_string(), "//foo:d");
+        assert_eq!(graph[0].target.to_string(), "foo:d");
         // the middle two nodes can be in any order
-        assert!(
-            graph[1].target.to_string() == "//foo:b" || graph[1].target.to_string() == "//foo:c"
-        );
-        assert!(
-            graph[2].target.to_string() == "//foo:b" || graph[2].target.to_string() == "//foo:c"
-        );
+        assert!(graph[1].target.to_string() == "foo:b" || graph[1].target.to_string() == "foo:c");
+        assert!(graph[2].target.to_string() == "foo:b" || graph[2].target.to_string() == "foo:c");
         // last because it depends on everything else
-        assert_eq!(graph[3].target.to_string(), "//foo:a");
+        assert_eq!(graph[3].target.to_string(), "foo:a");
     }
 
     #[test]
     fn output_tracks_files() {
         let root: VfsPath = MemoryFS::new().into();
-        let target = parse_target("//foo:a").unwrap();
+        let target = parse_target("foo:a").unwrap();
         create_test_file(
             &root,
             "foo/BUILD.toml",
             b"
             [[library]]
             name = \"a\"
-            dependencies = [\"//foo:b\"]
+            dependencies = [\"foo:b\"]
             files = [\"a.buri\"]
 
             [[library]]

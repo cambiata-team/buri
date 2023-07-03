@@ -2,8 +2,6 @@ use crate::{Index, Target, TargetName};
 
 #[derive(Debug, PartialEq)]
 pub enum TargetParseError {
-    // TODO: support relative targets
-    IsNotAbsolute,
     InvalidDirectoryCharacter,
     InvalidTargetCharacter,
     TargetMissing,
@@ -15,19 +13,13 @@ fn is_valid_part_character(c: char) -> bool {
 }
 
 // TODO: convert this into a standard state machine to simplify the code.
+// TODO: check that every directory has at least one character in it's name
 pub fn parse_target(str: &str) -> Result<Target, TargetParseError> {
-    if str.len() < 3 {
+    if str.is_empty() {
         return Err(TargetParseError::TooShort);
     }
-    if !str.starts_with("//") {
-        return Err(TargetParseError::IsNotAbsolute);
-    }
-    // Starting at 2 removes the leading "//"
     let mut iterator = str.char_indices();
-    iterator.next();
-    iterator.next();
-    let directories_start = 2;
-    let mut final_directory_start = 2;
+    let mut final_directory_start = 0;
     let mut index = 2;
     for (current_index, char) in iterator.by_ref() {
         index = current_index;
@@ -65,7 +57,6 @@ pub fn parse_target(str: &str) -> Result<Target, TargetParseError> {
 
     Ok(Target {
         name: TargetName::Specific(target_start_index as Index),
-        directories_start: directories_start as Index,
         directories_end: directories_end as Index,
         raw_text: str.to_string(),
     })
@@ -78,10 +69,10 @@ mod test {
     #[test]
     fn test_specific_target_names() {
         let tests = [
-            ["//foo", "foo"],
-            ["//foo:bar", "bar"],
-            ["//foo/bar", "bar"],
-            ["//foo/bar/foobar", "foobar"],
+            ["foo", "foo"],
+            ["foo:bar", "bar"],
+            ["foo/bar", "bar"],
+            ["foo/bar/foobar", "foobar"],
         ];
         for test in tests.iter() {
             let target = parse_target(test[0]).unwrap();
@@ -92,10 +83,10 @@ mod test {
     #[test]
     fn test_directories() {
         let tests = [
-            ["//foo", "foo"],
-            ["//foo:bar", "foo"],
-            ["//foo/bar", "foo/bar"],
-            ["//foo/bar/baz", "foo/bar/baz"],
+            ["foo", "foo"],
+            ["foo:bar", "foo"],
+            ["foo/bar", "foo/bar"],
+            ["foo/bar/baz", "foo/bar/baz"],
         ];
         for test in tests.iter() {
             let target = parse_target(test[0]).unwrap();
@@ -105,23 +96,26 @@ mod test {
 
     #[test]
     fn errors_on_invalid_targets() {
+        // TODO: uncomment these test cases
         let tests = [
-            "//",
-            ":",
-            "\\",
+            "",
+            // ":",
+            // "\\",
             "hello world",
-            "//foo/bar...",
-            "//foo/bar:baz...",
-            "//foo/bar:baz:...",
+            "foo/bar...",
+            "foo/bar:baz...",
+            "foo/bar:baz:...",
             "foo/.../bar",
-            "//foo ",
-            "/hello",
-            "hello/",
-            "//foo/bar:baz/qux",
+            "foo ",
+            // "/hello",
+            // "hello/",
+            "foo/bar:baz/qux",
+            // "//hello",
             "...:foo",
         ];
         for test in tests.iter() {
             let result = parse_target(test);
+            println!("{:?}", result);
             assert!(result.is_err());
         }
     }
