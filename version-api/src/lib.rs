@@ -8,7 +8,9 @@ use protos::{
     decode_base_64_to_bytes, encode_message_to_base_64, encode_message_to_bytes,
     version::{
         validate_get_version_download_info_request, validate_version_info_message,
-        GetVersionDownloadInfoRequest, GetVersionDownloadInfoResponse, VersionInfo,
+        version_info_key::Version, Architecture, Channel, GetVersionDownloadInfoRequest,
+        GetVersionDownloadInfoResponse, OperatingSystemFamily, Program, VersionInfo,
+        VersionInfoKey,
     },
 };
 use verifications::does_version_info_match_request;
@@ -147,6 +149,36 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                     .await?;
             }
             Response::ok("Added")
+        })
+        .get_async("/get-latest-cli-version-plaintext", |_, ctx| async move {
+            let mut key = VersionInfoKey::default();
+            // Hard code the defaults since presumably all builds will have the same version.
+            key.set_program(Program::VersionManager);
+            key.set_operating_system_family(OperatingSystemFamily::Darwin);
+            key.set_architecture(Architecture::Arm64);
+            key.version = Some(Version::Channel(Channel::Latest.into()));
+
+            let version_kv = ctx.kv("VERSIONS")?;
+            let encoded_key = encode_message_to_base_64(&key);
+            let version_info_base64 = return_if_error!(
+                version_kv
+                    .get(&encoded_key)
+                    .text()
+                    .await?
+                    .ok_or("Not found"),
+                Response::error("Not found", 404)
+            );
+            let version_info_bytes = decode_base_64_to_bytes(&version_info_base64);
+            let version_info = return_if_error!(
+                VersionInfo::decode(version_info_bytes.as_slice()),
+                Response::error("Internal error", 500)
+            );
+            return_if_error!(
+                validate_version_info_message(&version_info),
+                Response::error("Internal error", 500)
+            );
+
+            Response::ok(version_info.version_number)
         })
         .or_else_any_method("/*catchall", |_, _| {
             Response::error("This page does not exist", 404)
