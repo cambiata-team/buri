@@ -45,13 +45,6 @@ enum Channel {
   CHANNEL_LATEST = 1;
 }
 
-// Encodes a semantic version.
-message SemanticVersion {
-  optional uint32 major = 1;
-  optional uint32 minor = 2;
-  optional uint32 patch = 3;
-}
-
 // A recognized hash function used as a checksum.
 enum HashFunction {
   HASH_FUNCTION_UNSPECIFIED = 0;
@@ -66,7 +59,7 @@ message VersionInfoKey {
     Channel channel = 2;
 
     // The specific version to retrieve information about.
-    SemanticVersion version_number = 3;
+    string version_number = 3;
   }
   Architecture architecture = 4;
   OperatingSystemFamily operating_system_family = 5;
@@ -87,7 +80,7 @@ message VersionInfo {
 
   // The version number of the source code used to compile the binary
   // executable associated with this Version.
-  SemanticVersion version_number = 4;
+  string version_number = 4;
 
   // The cryptographic checksum of the binary executable associated with this
   // Version. For a client to consider a Version to be valid, this message
@@ -113,7 +106,7 @@ message GetVersionDownloadInfoRequest {
     Channel channel = 2;
 
     // The specific version to retrieve information about.
-    SemanticVersion version_number = 3;
+    string version_number = 3;
   }
 
   // The CPU architecture on which the client is running.

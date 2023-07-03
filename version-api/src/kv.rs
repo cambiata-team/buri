@@ -2,7 +2,7 @@ use protos::{
     encode_message_to_base_64,
     version::{
         get_version_download_info_request, version_info_key, Channel, Checksum,
-        GetVersionDownloadInfoRequest, HashFunction, SemanticVersion, VersionInfo, VersionInfoKey,
+        GetVersionDownloadInfoRequest, HashFunction, VersionInfo, VersionInfoKey,
     },
 };
 
@@ -26,7 +26,7 @@ pub fn create_version_info_key_from_request(request: &GetVersionDownloadInfoRequ
     encode_message_to_base_64(&key)
 }
 
-pub fn get_keys_from_binary_info(info: &BinaryInfo, version: &SemanticVersion) -> (String, String) {
+pub fn get_keys_from_binary_info(info: &BinaryInfo, version: &str) -> (String, String) {
     let mut latest_key = VersionInfoKey::default();
     latest_key.set_program(info.program);
     latest_key.set_architecture(info.architecture);
@@ -36,7 +36,7 @@ pub fn get_keys_from_binary_info(info: &BinaryInfo, version: &SemanticVersion) -
     ));
     let mut version_key = latest_key.clone();
     version_key.version = Some(protos::version::version_info_key::Version::VersionNumber(
-        version.clone(),
+        version.to_string(),
     ));
     (
         encode_message_to_base_64(&latest_key),
@@ -44,16 +44,12 @@ pub fn get_keys_from_binary_info(info: &BinaryInfo, version: &SemanticVersion) -
     )
 }
 
-pub fn create_version_info(
-    info: &BinaryInfo,
-    version: &SemanticVersion,
-    sha256: &str,
-) -> VersionInfo {
+pub fn create_version_info(info: &BinaryInfo, version: &str, sha256: &str) -> VersionInfo {
     let mut version_info = VersionInfo::default();
     version_info.set_program(info.program);
     version_info.set_architecture(info.architecture);
     version_info.set_operating_system_family(info.operating_system_family);
-    version_info.version_number = Some(version.clone());
+    version_info.version_number = version.to_string();
     let mut checksum = Checksum::default();
     checksum.set_hash_function(HashFunction::Sha256);
     checksum.checksum = sha256.to_string();
@@ -67,7 +63,6 @@ mod test {
     use super::*;
     use protos::version::{
         validate_version_info_message, Architecture, Channel, OperatingSystemFamily, Program,
-        SemanticVersion,
     };
 
     fn create_request() -> GetVersionDownloadInfoRequest {
@@ -131,11 +126,7 @@ mod test {
             Channel::Latest.into(),
         ));
         v1_request.version = Some(get_version_download_info_request::Version::VersionNumber(
-            SemanticVersion {
-                major: Some(1),
-                minor: Some(0),
-                patch: Some(0),
-            },
+            "1.0.0".to_string(),
         ));
         assert_ne!(
             create_version_info_key_from_request(&latest_request),
@@ -144,22 +135,30 @@ mod test {
     }
 
     #[test]
-    fn different_semantic_versions_produce_different_keys() {
+    fn different_version_numbers_produce_different_keys() {
         let mut v3_request = create_request();
         let mut v1_request = create_request();
         v3_request.version = Some(get_version_download_info_request::Version::VersionNumber(
-            SemanticVersion {
-                major: Some(3),
-                minor: Some(1),
-                patch: Some(4),
-            },
+            "3.1.4".to_string(),
         ));
         v1_request.version = Some(get_version_download_info_request::Version::VersionNumber(
-            SemanticVersion {
-                major: Some(1),
-                minor: Some(0),
-                patch: Some(0),
-            },
+            "1.0.0".to_string(),
+        ));
+        assert_ne!(
+            create_version_info_key_from_request(&v1_request),
+            create_version_info_key_from_request(&v3_request),
+        );
+    }
+
+    #[test]
+    fn different_version_dates_produce_different_keys() {
+        let mut v3_request = create_request();
+        let mut v1_request = create_request();
+        v3_request.version = Some(get_version_download_info_request::Version::VersionNumber(
+            "2023-04-13".to_string(),
+        ));
+        v1_request.version = Some(get_version_download_info_request::Version::VersionNumber(
+            "1970-01-01".to_string(),
         ));
         assert_ne!(
             create_version_info_key_from_request(&v1_request),
@@ -176,14 +175,10 @@ mod test {
             download_url: "https://downloads.buri-lang.dev".to_string(),
             hash_download_url: "https://downloads.buri-lang.dev/hash".to_string(),
         };
-        let version = SemanticVersion {
-            major: Some(1),
-            minor: Some(0),
-            patch: Some(0),
-        };
-        let (latest_key, version_key) = get_keys_from_binary_info(&info, &version);
+        let version = "1.0.0";
+        let (latest_key, version_key) = get_keys_from_binary_info(&info, version);
         assert_eq!(latest_key, "CAIQASACKAI=");
-        assert_eq!(version_key, "CAIaBggBEAAYACACKAI=");
+        assert_eq!(version_key, "CAIaBTEuMC4wIAIoAg==");
     }
 
     #[test]
@@ -195,13 +190,9 @@ mod test {
             download_url: "https://downloads.buri-lang.dev".to_string(),
             hash_download_url: "https://downloads.buri-lang.dev/hash".to_string(),
         };
-        let version = SemanticVersion {
-            major: Some(1),
-            minor: Some(0),
-            patch: Some(0),
-        };
+        let version = "1.0.0";
         let sha256 = "1234567890abcdef";
-        let version_info = create_version_info(&info, &version, sha256);
+        let version_info = create_version_info(&info, version, sha256);
         assert!(validate_version_info_message(&version_info).is_ok());
     }
 }

@@ -21,11 +21,7 @@ pub fn does_version_info_match_request(
     if let Some(get_version_download_info_request::Version::VersionNumber(version)) =
         &request.version
     {
-        let version_number = match version_info.version_number {
-            Some(ref version_number) => version_number,
-            None => return false,
-        };
-        if version != version_number {
+        if *version != version_info.version_number {
             return false;
         }
     }
@@ -35,7 +31,7 @@ pub fn does_version_info_match_request(
 
 #[cfg(test)]
 mod test {
-    use protos::version::{Channel, Program, SemanticVersion};
+    use protos::version::{Channel, Program};
 
     use super::*;
 
@@ -44,11 +40,7 @@ mod test {
         version_info.set_program(protos::version::Program::VersionManager);
         version_info.set_architecture(protos::version::Architecture::Arm64);
         version_info.set_operating_system_family(protos::version::OperatingSystemFamily::Darwin);
-        version_info.version_number = Some(SemanticVersion {
-            major: Some(1),
-            minor: Some(2),
-            patch: Some(3),
-        });
+        version_info.version_number = "1.2.3".to_string();
 
         version_info
     }
@@ -59,11 +51,7 @@ mod test {
         request.set_architecture(protos::version::Architecture::Arm64);
         request.set_operating_system_family(protos::version::OperatingSystemFamily::Darwin);
         request.version = Some(get_version_download_info_request::Version::VersionNumber(
-            SemanticVersion {
-                major: Some(1),
-                minor: Some(2),
-                patch: Some(3),
-            },
+            "1.2.3".to_string(),
         ));
         request
     }
@@ -108,17 +96,9 @@ mod test {
         let mut request = create_request();
         let mut version_info = create_version_info();
         request.version = Some(get_version_download_info_request::Version::VersionNumber(
-            SemanticVersion {
-                major: Some(4),
-                minor: Some(5),
-                patch: Some(6),
-            },
+            "1.2.3".to_string(),
         ));
-        version_info.version_number = Some(SemanticVersion {
-            major: Some(1),
-            minor: Some(2),
-            patch: Some(3),
-        });
+        version_info.version_number = "4.5.6".to_string();
         assert!(!does_version_info_match_request(&request, &version_info));
     }
 
@@ -129,12 +109,7 @@ mod test {
         request.version = Some(get_version_download_info_request::Version::Channel(
             Channel::Latest.into(),
         ));
-        version_info.version_number = None;
-        version_info.version_number = Some(SemanticVersion {
-            major: Some(1),
-            minor: Some(2),
-            patch: Some(3),
-        });
+        version_info.version_number = "1.2.3".to_string();
         assert!(does_version_info_match_request(&request, &version_info));
     }
 }

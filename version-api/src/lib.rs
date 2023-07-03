@@ -7,7 +7,7 @@ use prost::Message;
 use protos::{
     decode_base_64_to_bytes, encode_message_to_base_64, encode_message_to_bytes,
     version::{
-        parse_semantic_version_from_string, validate_get_version_download_info_request,
+        normalize_version, validate_get_version_download_info_request,
         validate_version_info_message, GetVersionDownloadInfoRequest,
         GetVersionDownloadInfoResponse, VersionInfo,
     },
@@ -113,16 +113,10 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                     400
                 )
             );
-            let version = return_if_error!(
-                parse_semantic_version_from_string(release_data.tag_name),
-                Response::error(
-                    format!(
-                        "Bad request - cannot parse version: {}",
-                        release_data.tag_name
-                    ),
-                    400
-                )
-            );
+            let version = normalize_version(release_data.tag_name);
+            if version.is_empty() {
+                return Response::error("Bad request - version is not specified", 400);
+            }
             let binary_infos: Vec<BinaryInfo> = release_data
                 .assets
                 .iter()
@@ -131,8 +125,8 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             for info in binary_infos {
                 let sha_file = fetch(&info.hash_download_url).await?;
                 let sha256 = get_hash_from_sha256_file(&sha_file);
-                let version_info = create_version_info(&info, &version, sha256);
-                let (latest_key, version_key) = get_keys_from_binary_info(&info, &version);
+                let version_info = create_version_info(&info, version, sha256);
+                let (latest_key, version_key) = get_keys_from_binary_info(&info, version);
 
                 // Ensure that we only save valid version info into the KV store.
                 return_if_error!(validate_version_info_message(&version_info), {

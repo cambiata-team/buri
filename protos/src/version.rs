@@ -8,7 +8,6 @@ pub enum VersionInfoError {
     UnspecifiedArchitecture,
     UnspecifiedOperatingSystemFamily,
     UnspecifiedVersionNumber,
-    InvalidVersion(SemanticVersionError),
     MissingChecksums,
     UnspecifiedHashFunction,
     EmptyChecksumHash,
@@ -68,13 +67,8 @@ pub fn validate_version_info_message(version_info: &VersionInfo) -> Result<(), V
     if version_info.operating_system_family() == OperatingSystemFamily::Unspecified {
         return Err(VersionInfoError::UnspecifiedOperatingSystemFamily);
     }
-    match &version_info.version_number {
-        Some(version_number) => {
-            validate_semantic_version(version_number).map_err(VersionInfoError::InvalidVersion)?;
-        }
-        None => {
-            return Err(VersionInfoError::UnspecifiedVersionNumber);
-        }
+    if version_info.version_number.is_empty() {
+        return Err(VersionInfoError::UnspecifiedVersionNumber);
     }
     if version_info.checksums.is_empty() {
         return Err(VersionInfoError::MissingChecksums);
@@ -97,32 +91,9 @@ pub fn validate_version_info_message(version_info: &VersionInfo) -> Result<(), V
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum SemanticVersionError {
-    UnspecifiedMajorVersion,
-    UnspecifiedMinorVersion,
-    UnspecifiedPatchVersion,
-}
-
-pub fn validate_semantic_version(
-    semantic_version: &SemanticVersion,
-) -> Result<(), SemanticVersionError> {
-    if semantic_version.major.is_none() {
-        return Err(SemanticVersionError::UnspecifiedMajorVersion);
-    }
-    if semantic_version.minor.is_none() {
-        return Err(SemanticVersionError::UnspecifiedMinorVersion);
-    }
-    if semantic_version.patch.is_none() {
-        return Err(SemanticVersionError::UnspecifiedPatchVersion);
-    }
-    Ok(())
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum GetVersionDownloadInfoError {
     ProgramNotSpecified,
     VersionNotSpecified,
-    InvalidSemanticVersion(SemanticVersionError),
     ArchitectureNotSpecified,
     OperatingSystemFamilyNotSpecified,
     SupportedHashFunctionsNotSpecified,
@@ -145,8 +116,9 @@ pub fn validate_get_version_download_info_request(
             }
         }
         Some(get_version_download_info_request::Version::VersionNumber(semantic_version)) => {
-            validate_semantic_version(semantic_version)
-                .map_err(GetVersionDownloadInfoError::InvalidSemanticVersion)?;
+            if semantic_version.is_empty() {
+                return Err(GetVersionDownloadInfoError::VersionNotSpecified);
+            }
         }
         None => {
             return Err(GetVersionDownloadInfoError::VersionNotSpecified);
@@ -182,38 +154,13 @@ pub enum ParseSemanticVersionError {
     InvalidPatchVersion(std::num::ParseIntError),
 }
 
-// Input can be either format: "v.1.2.3" or "1.2.3"
-pub fn parse_semantic_version_from_string(
-    input: &str,
-) -> Result<SemanticVersion, ParseSemanticVersionError> {
-    let mut semantic_version = SemanticVersion::default();
-    let mut input = input;
-    if input.starts_with('v') {
-        input = &input[1..];
+// Input can be either format: "v1.2.3" or "1.2.3" => normalize it to "1.2.3"
+pub fn normalize_version(input: &str) -> &str {
+    if let Some(stripped) = input.strip_prefix('v') {
+        stripped
+    } else {
+        input
     }
-    let mut split = input.split('.');
-    semantic_version.major = Some(
-        split
-            .next()
-            .ok_or(ParseSemanticVersionError::MissingMajorVersion)?
-            .parse()
-            .map_err(ParseSemanticVersionError::InvalidMajorVersion)?,
-    );
-    semantic_version.minor = Some(
-        split
-            .next()
-            .ok_or(ParseSemanticVersionError::MissingMinorVersion)?
-            .parse()
-            .map_err(ParseSemanticVersionError::InvalidMinorVersion)?,
-    );
-    semantic_version.patch = Some(
-        split
-            .next()
-            .ok_or(ParseSemanticVersionError::MissingPatchVersion)?
-            .parse()
-            .map_err(ParseSemanticVersionError::InvalidPatchVersion)?,
-    );
-    Ok(semantic_version)
 }
 
 #[cfg(test)]
@@ -225,11 +172,7 @@ mod test {
         version_info.set_program(Program::VersionManager);
         version_info.set_architecture(Architecture::Arm64);
         version_info.set_operating_system_family(OperatingSystemFamily::Linux);
-        version_info.version_number = Some(SemanticVersion {
-            major: Some(0),
-            minor: Some(1),
-            patch: Some(0),
-        });
+        version_info.version_number = "1.0.1".to_string();
         let mut checksum = Checksum::default();
         checksum.set_hash_function(HashFunction::Sha256);
         checksum.checksum = "deadbeef".to_string();
@@ -278,48 +221,12 @@ mod test {
     }
 
     #[test]
-    fn version_info_must_include_version_number() {
+    fn version_info_must_not_be_empty() {
         let mut version_info = make_valid_version_info();
-        version_info.version_number = None;
+        version_info.version_number = "".to_string();
         assert_eq!(
             validate_version_info_message(&version_info),
             Err(VersionInfoError::UnspecifiedVersionNumber)
-        );
-    }
-
-    #[test]
-    fn version_info_must_include_major_version() {
-        let mut version_info = make_valid_version_info();
-        version_info.version_number.as_mut().unwrap().major = None;
-        assert_eq!(
-            validate_version_info_message(&version_info),
-            Err(VersionInfoError::InvalidVersion(
-                SemanticVersionError::UnspecifiedMajorVersion
-            ))
-        );
-    }
-
-    #[test]
-    fn version_info_must_include_minor_version() {
-        let mut version_info = make_valid_version_info();
-        version_info.version_number.as_mut().unwrap().minor = None;
-        assert_eq!(
-            validate_version_info_message(&version_info),
-            Err(VersionInfoError::InvalidVersion(
-                SemanticVersionError::UnspecifiedMinorVersion
-            ))
-        );
-    }
-
-    #[test]
-    fn version_info_must_include_patch_version() {
-        let mut version_info = make_valid_version_info();
-        version_info.version_number.as_mut().unwrap().patch = None;
-        assert_eq!(
-            validate_version_info_message(&version_info),
-            Err(VersionInfoError::InvalidVersion(
-                SemanticVersionError::UnspecifiedPatchVersion
-            ))
         );
     }
 
@@ -522,58 +429,17 @@ mod test {
     }
 
     #[test]
-    fn parse_semantic_version_from_string_parses_major_version() {
-        assert_eq!(
-            parse_semantic_version_from_string("1.0.42").unwrap().major,
-            Some(1)
-        );
+    fn remove_the_v_from_semantic_versions() {
+        assert_eq!(normalize_version("v1.0.42"), "1.0.42");
     }
 
     #[test]
-    fn parse_semantic_version_from_string_parses_minor_version() {
-        assert_eq!(
-            parse_semantic_version_from_string("1.0.42").unwrap().minor,
-            Some(0)
-        );
+    fn semantic_versions_remain_unchanged() {
+        assert_eq!(normalize_version("1.0.42"), "1.0.42");
     }
 
     #[test]
-    fn parse_semantic_version_from_string_parses_patch_version() {
-        assert_eq!(
-            parse_semantic_version_from_string("1.0.42").unwrap().patch,
-            Some(42)
-        );
-    }
-
-    #[test]
-    fn parse_semantic_version_from_string_parses_major_version_with_preceding_v() {
-        assert_eq!(
-            parse_semantic_version_from_string("v1.0.42").unwrap().major,
-            Some(1)
-        );
-    }
-
-    #[test]
-    fn parse_semantic_version_from_string_parses_minor_version_with_preceding_v() {
-        assert_eq!(
-            parse_semantic_version_from_string("v1.0.42").unwrap().minor,
-            Some(0)
-        );
-    }
-
-    #[test]
-    fn parse_semantic_version_from_string_parses_patch_version_with_preceding_v() {
-        assert_eq!(
-            parse_semantic_version_from_string("v1.0.42").unwrap().patch,
-            Some(42)
-        );
-    }
-
-    #[test]
-    fn parse_semantic_version_from_string_errors_with_invalid_input() {
-        let tests = ["1.0", "1", "v1", "v1.0", "hello world", "    v1.2.3"];
-        for test in tests.iter() {
-            assert!(parse_semantic_version_from_string(test).is_err());
-        }
+    fn normalize_version_works_with_date_based_versions() {
+        assert_eq!(normalize_version("2023-07-03"), "2023-07-03");
     }
 }
