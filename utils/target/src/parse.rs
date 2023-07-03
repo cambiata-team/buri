@@ -2,57 +2,58 @@ use crate::{Index, Target, TargetName};
 
 #[derive(Debug, PartialEq)]
 pub enum TargetParseError {
-    InvalidDirectoryCharacter,
-    InvalidTargetCharacter,
-    TargetMissing,
     TooShort,
+    IllegalCharacter,
+    MissingTargetName,
+    DirectoriesMustHaveAName,
+    CannotStartWithASlash,
 }
 
 fn is_valid_part_character(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_' || c == '-'
 }
 
-// TODO: convert this into a standard state machine to simplify the code.
-// TODO: check that every directory has at least one character in it's name
 pub fn parse_target(str: &str) -> Result<Target, TargetParseError> {
     if str.is_empty() {
         return Err(TargetParseError::TooShort);
     }
-    let mut iterator = str.char_indices();
-    let mut final_directory_start = 0;
-    let mut index = 2;
-    for (current_index, char) in iterator.by_ref() {
-        index = current_index;
+    if str.ends_with(':') || str.ends_with('/') {
+        return Err(TargetParseError::MissingTargetName);
+    }
+    let mut target_start_index = 0;
+    let mut directories_end = str.len();
+    let mut has_set_target_start = false;
+    let mut has_seen_slash = false;
+    let mut is_previous_char_slash = false;
+    // Go in reverse in case the target name is implicitly the directory.
+    for (iterator_index, char) in str.chars().rev().enumerate() {
+        let index = str.len() - iterator_index - 1;
         match char {
+            c if is_valid_part_character(c) => {}
             ':' => {
-                break;
+                if has_seen_slash || has_set_target_start {
+                    return Err(TargetParseError::IllegalCharacter);
+                }
+                target_start_index = index + 1;
+                has_set_target_start = true;
+                directories_end = index;
             }
             '/' => {
-                final_directory_start = current_index + 1;
+                if is_previous_char_slash {
+                    return Err(TargetParseError::DirectoriesMustHaveAName);
+                }
+                if index == 0 {
+                    return Err(TargetParseError::CannotStartWithASlash);
+                }
+                if !has_set_target_start {
+                    target_start_index = index + 1;
+                    has_set_target_start = true;
+                }
+                has_seen_slash = true;
             }
-            _ if is_valid_part_character(char) => {}
-            _ => {
-                return Err(TargetParseError::InvalidDirectoryCharacter);
-            }
+            _ => return Err(TargetParseError::IllegalCharacter),
         }
-    }
-
-    let mut directories_end = index;
-    let mut target_start_index = index + 1;
-    // validate target
-    if target_start_index == str.len() {
-        if final_directory_start != directories_end {
-            target_start_index = final_directory_start;
-            directories_end += 1;
-        } else {
-            return Err(TargetParseError::TargetMissing);
-        }
-    }
-
-    for (_, char) in iterator {
-        if !is_valid_part_character(char) {
-            return Err(TargetParseError::InvalidTargetCharacter);
-        }
+        is_previous_char_slash = char == '/';
     }
 
     Ok(Target {
@@ -96,22 +97,24 @@ mod test {
 
     #[test]
     fn errors_on_invalid_targets() {
-        // TODO: uncomment these test cases
         let tests = [
             "",
-            // ":",
-            // "\\",
+            ":",
+            "\\",
             "hello world",
             "foo/bar...",
             "foo/bar:baz...",
             "foo/bar:baz:...",
             "foo/.../bar",
             "foo ",
-            // "/hello",
-            // "hello/",
+            "/hello",
+            "hello/",
             "foo/bar:baz/qux",
-            // "//hello",
+            "//hello",
             "...:foo",
+            "foo:bar:baz",
+            "foo:bar/baz",
+            "foo::bar",
         ];
         for test in tests.iter() {
             let result = parse_target(test);
