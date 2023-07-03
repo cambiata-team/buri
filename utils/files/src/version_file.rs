@@ -1,6 +1,7 @@
 use std::fmt;
 use version::{is_valid_version, normalize_version};
 
+// Do not change. This will lead to incompatibilities between versions.
 pub const VERSION_FILE_NAME: &str = ".buri-version";
 
 #[derive(Debug, PartialEq)]

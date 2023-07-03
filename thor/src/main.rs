@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use vfs::{PhysicalFS, VfsPath};
+use vfs::{PhysicalFS, VfsError, VfsPath};
 
 mod init;
 
@@ -19,18 +19,15 @@ enum Commands {
     },
 }
 
-fn main() {
+fn main() -> Result<(), VfsError> {
     let cli = Cli::parse();
 
     let root: VfsPath = PhysicalFS::new(std::env::current_dir().unwrap()).into();
     let mut vio = virtual_io::Vio::new();
 
-    let result = match &cli.command {
+    match &cli.command {
         Some(Commands::Init { name }) => init::do_init(&root, &mut vio, name),
         None => Ok(()),
-    };
-    if let Err(e) = result {
-        eprintln!("Error: {}", e);
     }
 }
 

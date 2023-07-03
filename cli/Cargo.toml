@@ -2,3 +2,8 @@
 name = "cli"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+files = { path = "../utils/files" }
+vfs.workspace = true
+virtual-io.workspace = true

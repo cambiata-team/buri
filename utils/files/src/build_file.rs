@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+// Do not change without supplying a migration script.
+// This will lead to incompatibilities between versions.
 pub const BUILD_FILE_NAME: &str = "BUILD.toml";
 
 #[derive(Deserialize, Serialize)]
