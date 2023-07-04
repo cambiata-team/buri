@@ -8,7 +8,7 @@ pub fn normalize_version(input: &str) -> &str {
 }
 
 pub fn is_valid_version(input: &str) -> bool {
-    !input.is_empty() && !input.contains(char::is_whitespace)
+    !input.is_empty() && !input.contains(char::is_whitespace) && !input.contains('@')
 }
 
 #[cfg(test)]
@@ -45,5 +45,11 @@ mod test {
         assert!(!is_valid_version(" "));
         assert!(!is_valid_version("1 2 3"));
         assert!(!is_valid_version("11.\t.3"));
+    }
+
+    #[test]
+    fn version_cannot_contain_at_symbol() {
+        assert!(!is_valid_version("1.2.3@"));
+        assert!(!is_valid_version("1.2.3@alpha"));
     }
 }
