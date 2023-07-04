@@ -1,6 +1,6 @@
 // This file contains code that is impure and cannot be tested.
 
-use crate::{context::Context, thor::get_thor_binary_directory, CliError};
+use crate::{context::Context, errors::CliError, thor::get_thor_binary_directory};
 use protos::version::VersionInfo;
 use version::is_valid_version;
 use virtual_io::VirtualIo;
@@ -17,7 +17,7 @@ pub async fn download_thor(
     match &version {
         Some(version) => {
             if !is_valid_version(version) {
-                return Err(CliError::InvalidThorVersion);
+                return Err(CliError::InvalidThorVersion(version.clone()));
             }
         }
         None => {
@@ -39,7 +39,6 @@ async fn fetch_version_info(version: Option<String>) -> Result<VersionInfo, CliE
         use crate::version_api::{
             build_version_api_request_url_for_latest, build_version_api_request_url_for_version,
         };
-        use macros::return_if_error;
         use prost::Message;
         use protos::{decode_base_64_to_bytes, version::validate_version_info_message};
         use std::env::consts::ARCH;
@@ -52,19 +51,14 @@ async fn fetch_version_info(version: Option<String>) -> Result<VersionInfo, CliE
 
         let body = reqwest::get(url)
             .await
-            .map_err(|_| CliError::NetworkError)?
+            .map_err(|e| CliError::NetworkError(e.to_string()))?
             .text()
             .await
-            .map_err(|_| CliError::NetworkError)?;
+            .map_err(|e| CliError::NetworkError(e.to_string()))?;
         let body_bytes = decode_base_64_to_bytes(&body);
-        let version_info = return_if_error!(
-            VersionInfo::decode(body_bytes.as_slice()),
-            Err(CliError::InternalError)
-        );
-        return_if_error!(
-            validate_version_info_message(&version_info),
-            Err(CliError::InternalError)
-        );
+        let version_info =
+            VersionInfo::decode(body_bytes.as_slice()).map_err(CliError::VersionInfoDecodeError)?;
+        validate_version_info_message(&version_info).map_err(CliError::VersionInfoMessageError)?;
         Ok(version_info)
     }
     #[cfg(test)]
@@ -105,7 +99,7 @@ async fn download_and_extract_binary(
         use tempfile::Builder;
 
         if version_info.download_urls.is_empty() {
-            return Err(CliError::InternalError);
+            return Err(CliError::NoDownloadUrls);
         }
 
         let url = version_info.download_urls[0].clone();
@@ -113,11 +107,11 @@ async fn download_and_extract_binary(
         let temporary_directory = Builder::new()
             .prefix("thor")
             .tempdir()
-            .map_err(|_| CliError::InternalError)?;
+            .map_err(|e| CliError::TemporaryDirectoryCreationError(e.to_string()))?;
 
         let response = reqwest::get(url)
             .await
-            .map_err(|_| CliError::NetworkError)?;
+            .map_err(|e| CliError::NetworkError(e.to_string()))?;
 
         let mut tarball_file = {
             let file_name = response
@@ -129,23 +123,26 @@ async fn download_and_extract_binary(
 
             let fname = temporary_directory.path().join(file_name);
 
-            File::create(fname).map_err(|_| CliError::InternalError)?
+            File::create(fname).map_err(|e| CliError::CreateTarballFileError(e.to_string()))?
         };
 
-        let bytes = response.bytes().await.map_err(|_| CliError::NetworkError)?;
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|e| CliError::NetworkError(e.to_string()))?;
 
         validate_checksum(&bytes, version_info)?;
 
         tarball_file
             .write_all(&bytes)
-            .map_err(|_| CliError::InternalError)?;
+            .map_err(|e| CliError::WriteToTarballFileError(e.to_string()))?;
 
         let reader = BufReader::new(tarball_file);
         let tar = GzDecoder::new(reader);
         let mut archive = Archive::new(tar);
         archive
             .unpack(&temporary_directory)
-            .map_err(|_| CliError::InternalError)?;
+            .map_err(|e| CliError::UnpackTarballError(e.to_string()))?;
 
         let temporary_thor_binary = temporary_directory.path().join("thor");
 
@@ -155,18 +152,19 @@ async fn download_and_extract_binary(
             temporary_thor_binary.to_str().unwrap(),
             thor_binary.as_str(),
         )
-        .map_err(|_| CliError::InternalError)?;
+        .map_err(|e| CliError::RenameThorBinaryError(e.to_string()))?;
 
         // Mark it as executable
         let mut perms = std::fs::metadata(thor_binary.as_str())
-            .map_err(|_| CliError::InternalError)?
+            .map_err(|e| CliError::CannotReadThorBinaryPermissions(e.to_string()))?
             .permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(thor_binary.as_str(), perms)
-            .map_err(|_| CliError::InternalError)?;
+            .map_err(|e| CliError::CannotMarkBinaryAsExecutable(e.to_string()))?;
 
         // Cleanup temporary files
-        std::fs::remove_dir_all(temporary_directory).map_err(|_| CliError::InternalError)?;
+        std::fs::remove_dir_all(temporary_directory)
+            .map_err(|e| CliError::CannotRemoveTemporaryFiles(e.to_string()))?;
 
         Ok(())
     }

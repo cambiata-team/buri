@@ -1,4 +1,4 @@
-use crate::CliError;
+use crate::errors::CliError;
 use protos::version::{Checksum, HashFunction, VersionInfo};
 use sha2::{Digest, Sha256};
 
@@ -8,7 +8,7 @@ fn select_checksum(version_info: &VersionInfo) -> Result<Checksum, CliError> {
             return Ok(checksum.clone());
         }
     }
-    Err(CliError::InternalError)
+    Err(CliError::NoSupportedChecksum)
 }
 
 pub fn validate_checksum(bytes: &[u8], version_info: &VersionInfo) -> Result<(), CliError> {
@@ -17,9 +17,14 @@ pub fn validate_checksum(bytes: &[u8], version_info: &VersionInfo) -> Result<(),
     let mut hasher = Sha256::new();
     hasher.update(bytes);
     let hashed_result = hasher.finalize();
-    let checksum_bytes = hex::decode(checksum.checksum).map_err(|_| CliError::InternalError)?;
+    let checksum_bytes =
+        hex::decode(checksum.checksum).map_err(|e| CliError::ChecksumNotValidHex(e.to_string()))?;
     if hashed_result.as_slice() != checksum_bytes.as_slice() {
-        return Err(CliError::InvalidChecksum);
+        // Expected, Actual
+        return Err(CliError::ChecksumsDoNotMatch(
+            hex::encode(checksum_bytes),
+            hex::encode(hashed_result),
+        ));
     }
 
     Ok(())
@@ -69,7 +74,13 @@ mod test {
         version_info.checksums.push(checksum.clone());
         let bytes = "test".as_bytes();
         let result = validate_checksum(bytes, &version_info);
-        assert_eq!(result, Err(CliError::InvalidChecksum));
+        assert_eq!(
+            result,
+            Err(CliError::ChecksumsDoNotMatch(
+                "beef".into(),
+                "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08".into()
+            ))
+        );
     }
 
     #[test]
@@ -81,6 +92,6 @@ mod test {
         version_info.checksums.push(checksum.clone());
         let bytes = "test".as_bytes();
         let result = validate_checksum(bytes, &version_info);
-        assert_eq!(result, Err(CliError::InternalError));
+        assert!(matches!(result, Err(CliError::ChecksumNotValidHex(_))));
     }
 }

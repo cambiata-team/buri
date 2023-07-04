@@ -1,6 +1,5 @@
-use std::fmt;
-
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use version::{is_valid_version, normalize_version};
 
 // Do not change. This will lead to incompatibilities between versions.
@@ -28,6 +27,18 @@ pub enum SetVersionError {
 impl fmt::Display for CliConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", toml::to_string(self).unwrap())
+    }
+}
+
+impl fmt::Display for SetVersionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                SetVersionError::InvalidVersion => "Invalid version",
+            }
+        )
     }
 }
 

@@ -1,40 +1,43 @@
-use crate::{context::Context, CliError};
+use crate::{context::Context, errors::CliError};
 use files::cli_config::{CliConfig, BURI_VERSION_KEY, CLI_CONFIG_FILE_NAME};
 use toml_edit::{value, Document};
 
 pub fn ensure_version_is_in_config(context: &Context, version: &str) -> Result<(), CliError> {
     let config_file = context.root.join(CLI_CONFIG_FILE_NAME).unwrap();
-    if !config_file.exists().map_err(|_| CliError::InternalError)? {
+    if !config_file
+        .exists()
+        .map_err(|e| CliError::VfsError(e.to_string()))?
+    {
         let mut config = CliConfig::default();
         config
             .set_version(version)
-            .map_err(|_| CliError::InternalError)?;
+            .map_err(CliError::SetThorVersionError)?;
         write!(
             config_file
                 .create_file()
-                .map_err(|_| CliError::InternalError)?,
+                .map_err(|e| CliError::VfsError(e.to_string()))?,
             "{}",
             config
         )
-        .map_err(|_| CliError::InternalError)?;
+        .map_err(|e| CliError::WriteToExistingConfigFileError(e.to_string()))?;
         return Ok(());
     }
     let contents = config_file
         .read_to_string()
-        .map_err(|_| CliError::InternalError)?;
+        .map_err(|e| CliError::VfsError(e.to_string()))?;
     let mut config = contents.parse::<Document>().unwrap();
     config[BURI_VERSION_KEY] = value(version);
     config_file
         .remove_file()
-        .map_err(|_| CliError::InternalError)?;
+        .map_err(|e| CliError::VfsError(e.to_string()))?;
     write!(
         config_file
             .create_file()
-            .map_err(|_| CliError::InternalError)?,
+            .map_err(|e| CliError::VfsError(e.to_string()))?,
         "{}",
         config
     )
-    .map_err(|_| CliError::InternalError)?;
+    .map_err(|e| CliError::WriteToNewConfigFileError(e.to_string()))?;
 
     Ok(())
 }

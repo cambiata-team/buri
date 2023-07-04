@@ -1,5 +1,6 @@
 use config::ensure_version_is_in_config;
 use context::Context;
+use errors::CliError;
 use files::workspace_file::WORKSPACE_FILE_NAME;
 use impure::download_thor;
 use std::{env, os::unix::process::CommandExt, process::Command};
@@ -8,43 +9,21 @@ use virtual_io::{Vio, VirtualIo};
 
 mod config;
 mod context;
+mod errors;
 mod impure;
 mod security;
 mod thor;
 mod version_api;
 
-const MUST_INITIALIZE_MESSAGE: &str = "
-You must be in a workspace to use Buri.
-Use `buri init` to create a new workspace.
-
-$   buri init
-
-Use `buri --help` for more information.";
-
-// What if the WORKSPACE.toml exists but not the .buri-version?
-// Use the latest version of Thor and create the .buri-version.
-
-#[derive(Debug, PartialEq)]
-pub enum CliError {
-    VfsError,
-    MustInitialize,
-    MustSpecifyACommand,
-    InvalidThorVersion,
-    NetworkError,
-    InternalError,
-    InvalidChecksum,
-}
-
 async fn main_impl(
     context: Context,
     vio: &mut impl VirtualIo,
-) -> Result<Option<(String, Vec<String>)>, CliError> {
+) -> Result<(String, Vec<String>), CliError> {
     let workspace_file = context
         .root
         .join(WORKSPACE_FILE_NAME)
-        .map_err(|_| CliError::VfsError)?;
+        .map_err(|e| CliError::VfsError(e.to_string()))?;
     if !workspace_file.exists().unwrap_or(false) || !workspace_file.is_file().unwrap_or(false) {
-        vio.print(MUST_INITIALIZE_MESSAGE);
         return Err(CliError::MustInitialize);
     }
 
@@ -65,7 +44,7 @@ async fn main_impl(
 
     let thor_binary_path = get_thor_binary_path(&context, &thor_version);
 
-    Ok(Some((thor_binary_path.as_str().to_string(), context.args)))
+    Ok((thor_binary_path.as_str().to_string(), context.args))
 }
 
 #[tokio::main]
@@ -79,13 +58,15 @@ pub async fn main() {
 
     let result = main_impl(context, &mut vio).await;
     match result {
-        Ok(Some((exec, args))) => {
+        Ok((exec, args)) => {
             // Only works on Unix systems.
             // https://stackoverflow.com/a/53479765/11506995
             Command::new(exec).args(args).exec();
         }
-        Ok(None) => {}
-        Err(_) => std::process::exit(1),
+        Err(e) => {
+            println!("{e}");
+            std::process::exit(1)
+        }
     };
 }
 
@@ -98,14 +79,11 @@ mod test {
 
     #[tokio::test]
     async fn command_that_is_not_init_outside_workspace_errors() {
-        let mut vio = VioFakeBuilder::new()
-            .expect_stdout(MUST_INITIALIZE_MESSAGE)
-            .build();
+        let mut vio = VioFakeBuilder::new().build();
         let mut context = Context::test();
         context.args.push("build".to_string());
         let result = main_impl(context, &mut vio).await;
         assert_eq!(result, Err(CliError::MustInitialize));
-        assert_eq!(vio.get_actual(), vio.get_expected());
     }
 
     #[tokio::test]
