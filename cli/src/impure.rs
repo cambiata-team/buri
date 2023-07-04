@@ -164,6 +164,10 @@ async fn download_and_extract_binary(
         perms.set_mode(0o755);
         std::fs::set_permissions(thor_binary.as_str(), perms)
             .map_err(|_| CliError::InternalError)?;
+
+        // Cleanup temporary files
+        std::fs::remove_dir_all(temporary_directory).map_err(|_| CliError::InternalError)?;
+
         Ok(())
     }
     #[cfg(test)]
