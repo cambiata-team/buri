@@ -94,7 +94,7 @@ BURI_LOCATION=/usr/local/bin/buri
 # The directory where we store config files.
 CONFIG_DIRECTORY=~/.config/buri
 CLI_VERSION_FILE_NAME=cli-version.txt
-CLI_VERSION_FILE_PATH=$CONFIG_DIRECTORY/$CLI_VERSION_FILE_NAME
+CLI_VERSION_FILE_PATH="$CONFIG_DIRECTORY/$CLI_VERSION_FILE_NAME"
 # The URL where we fetch the latest version number.
 VERSION_URL=https://version-api.buri-lang.dev/get-latest-cli-version-plaintext
 
