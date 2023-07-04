@@ -40,16 +40,16 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             }
             let query = &return_if_error!(
                 url.query().ok_or("no query parameters"),
-                Response::error("Bad request", 400)
+                Response::error("Bad request: no query parameters", 400)
             )[2..]; // Remove the leading "?q=".
             let data = decode_base_64_to_bytes(query);
             let request = return_if_error!(
                 GetVersionDownloadInfoRequest::decode(data.as_slice()),
-                Response::error("Bad request", 400)
+                Response::error("Bad request: cannot decode request proto", 400)
             );
             return_if_error!(
                 validate_get_version_download_info_request(&request),
-                Response::error("Bad request", 400)
+                Response::error("Bad request: invalid version download info request", 400)
             );
             let key = create_version_info_key_from_request(&request);
             let version_kv = ctx.kv("VERSIONS")?;
