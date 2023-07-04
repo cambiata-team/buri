@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, os::unix::process::CommandExt, process::Command};
 
 use context::Context;
 use files::workspace_file::WORKSPACE_FILE_NAME;
@@ -43,7 +43,15 @@ pub enum CliError {
 //          - If config file does not exist, call version API for latest version of Thor and download. Create config file.
 //      - Call that version of Thor, passing through all arguments
 // x 3. Inform them to call `buri init` to initialize a workspace.
-fn main_impl(context: Context, vio: &mut impl VirtualIo) -> Result<(), CliError> {
+fn main_impl(
+    context: Context,
+    vio: &mut impl VirtualIo,
+) -> Result<Option<(String, Vec<String>)>, CliError> {
+    if context.args.is_empty() {
+        vio.print(MUST_SPECIFY_A_COMMAND_MESSAGE);
+        return Err(CliError::MustSpecifyACommand);
+    }
+
     let workspace_file = context
         .root
         .join(WORKSPACE_FILE_NAME)
@@ -52,18 +60,13 @@ fn main_impl(context: Context, vio: &mut impl VirtualIo) -> Result<(), CliError>
         && workspace_file.is_file().map_err(|_| CliError::VfsError)?
     {
         vio.println("Workspace already exists, no need to create a new one.");
-        return Ok(());
-    }
-
-    if context.args.is_empty() {
-        vio.print(MUST_SPECIFY_A_COMMAND_MESSAGE);
-        return Err(CliError::MustSpecifyACommand);
+        return Ok(None);
     }
 
     if let Some(first_arg) = context.args.get(0) {
         if first_arg == "init" {
             // Initialize repo
-            return Ok(());
+            return Ok(None);
         }
     }
 
@@ -80,9 +83,15 @@ pub fn main() {
     let context = Context::new(args);
 
     let result = main_impl(context, &mut vio);
-    if result.is_err() {
-        std::process::exit(1);
-    }
+    match result {
+        Ok(Some((exec, args))) => {
+            // Only works on Unix systems.
+            // https://stackoverflow.com/a/53479765/11506995
+            Command::new(exec).args(args).exec();
+        }
+        Ok(None) => {}
+        Err(_) => std::process::exit(1),
+    };
 }
 
 #[cfg(test)]
@@ -96,6 +105,23 @@ mod test {
             .expect_stdout(MUST_SPECIFY_A_COMMAND_MESSAGE)
             .build();
         let context = Context::test();
+        let result = main_impl(context, &mut vio);
+        assert_eq!(result, Err(CliError::MustSpecifyACommand));
+        assert_eq!(vio.get_actual(), vio.get_expected());
+    }
+
+    #[test]
+    fn must_specify_command_even_if_workspace_file_is_present() {
+        let mut vio = VioFakeBuilder::new()
+            .expect_stdout(MUST_SPECIFY_A_COMMAND_MESSAGE)
+            .build();
+        let context = Context::test();
+        context
+            .root
+            .join(WORKSPACE_FILE_NAME)
+            .unwrap()
+            .create_file()
+            .unwrap();
         let result = main_impl(context, &mut vio);
         assert_eq!(result, Err(CliError::MustSpecifyACommand));
         assert_eq!(vio.get_actual(), vio.get_expected());
