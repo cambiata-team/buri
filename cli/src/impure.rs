@@ -1,7 +1,7 @@
 // This file contains code that is impure and cannot be tested.
 
 use crate::{context::Context, errors::CliError, thor::get_thor_binary_directory};
-use protos::version::VersionInfo;
+use protos::version::GetVersionDownloadInfoResponse;
 use version::is_valid_version;
 use virtual_io::VirtualIo;
 
@@ -24,27 +24,31 @@ pub async fn download_thor(
             vio.print(DETERMINING_LATEST_VERSION_MESSAGE);
         }
     }
-    let version_info = fetch_version_info(version).await?;
+    let download_info = fetch_download_info(version).await?;
     vio.println(format!(
         "Downloading version {}...",
-        version_info.version_number
+        download_info.version_number
     ));
-    download_and_extract_binary(context, &version_info).await?;
-    Ok(version_info.version_number)
+    download_and_extract_binary(context, &download_info).await?;
+    Ok(download_info.version_number)
 }
 
-async fn fetch_version_info(version: Option<String>) -> Result<VersionInfo, CliError> {
+async fn fetch_download_info(
+    _version: Option<String>,
+) -> Result<GetVersionDownloadInfoResponse, CliError> {
     #[cfg(not(test))]
     {
         use crate::version_api::{
             build_version_api_request_url_for_latest, build_version_api_request_url_for_version,
         };
         use prost::Message;
-        use protos::{decode_base_64_to_bytes, version::validate_version_info_message};
+        use protos::{
+            decode_base_64_to_bytes, version::validate_get_version_download_info_response,
+        };
         use std::env::consts::ARCH;
         use std::env::consts::OS;
 
-        let url = match version {
+        let url = match _version {
             Some(version) => build_version_api_request_url_for_version(version.as_str(), ARCH, OS),
             None => build_version_api_request_url_for_latest(ARCH, OS),
         };
@@ -56,33 +60,38 @@ async fn fetch_version_info(version: Option<String>) -> Result<VersionInfo, CliE
             .await
             .map_err(|e| CliError::NetworkError(e.to_string()))?;
         let body_bytes = decode_base_64_to_bytes(&body);
-        let version_info =
-            VersionInfo::decode(body_bytes.as_slice()).map_err(CliError::VersionInfoDecodeError)?;
-        validate_version_info_message(&version_info).map_err(CliError::VersionInfoMessageError)?;
-        Ok(version_info)
+        let response = GetVersionDownloadInfoResponse::decode(body_bytes.as_slice())
+            .map_err(CliError::DownloadInfoResponseDecodeError)?;
+        validate_get_version_download_info_response(&response)
+            .map_err(CliError::DownloadInfoResponseError)?;
+        Ok(response)
     }
     #[cfg(test)]
     {
         use protos::version::{Checksum, HashFunction};
 
-        let mut checksum = Checksum::default();
-        checksum.set_hash_function(HashFunction::Sha256);
-        checksum.checksum = "checksum".to_string();
-
-        let info = VersionInfo {
-            version_number: version.unwrap_or("latest".to_string()),
-            checksums: vec![checksum],
+        let mut response = GetVersionDownloadInfoResponse {
+            version_number: "0.1.0".into(),
             ..Default::default()
         };
-        Ok(info)
+        response
+            .download_urls
+            .push("https://downloads.buri-lang.dev".into());
+
+        let mut checksum = Checksum::default();
+        checksum.set_hash_function(HashFunction::Sha256);
+        checksum.checksum = "deadbeef".into();
+        response.checksum = Some(checksum);
+
+        Ok(response)
     }
 }
 
 async fn download_and_extract_binary(
     context: &Context,
-    version_info: &VersionInfo,
+    download_info: &GetVersionDownloadInfoResponse,
 ) -> Result<(), CliError> {
-    let thor_directory = get_thor_binary_directory(context, &version_info.version_number);
+    let thor_directory = get_thor_binary_directory(context, &download_info.version_number);
     // Ensures the thor directory exists.
     thor_directory.create_dir_all().unwrap();
 
@@ -98,11 +107,11 @@ async fn download_and_extract_binary(
         use tar::Archive;
         use tempfile::Builder;
 
-        if version_info.download_urls.is_empty() {
+        if download_info.download_urls.is_empty() {
             return Err(CliError::NoDownloadUrls);
         }
 
-        let url = version_info.download_urls[0].clone();
+        let url = download_info.download_urls[0].clone();
 
         let temporary_directory = Builder::new()
             .prefix("thor")
@@ -131,7 +140,7 @@ async fn download_and_extract_binary(
             .await
             .map_err(|e| CliError::NetworkError(e.to_string()))?;
 
-        validate_checksum(&bytes, version_info)?;
+        validate_checksum(&bytes, download_info)?;
 
         tarball_file
             .write_all(&bytes)
@@ -146,7 +155,7 @@ async fn download_and_extract_binary(
 
         let temporary_thor_binary = temporary_directory.path().join("thor");
 
-        let thor_binary = get_thor_binary_path(context, &version_info.version_number);
+        let thor_binary = get_thor_binary_path(context, &download_info.version_number);
 
         std::fs::rename(
             temporary_thor_binary.to_str().unwrap(),
@@ -171,7 +180,7 @@ async fn download_and_extract_binary(
     #[cfg(test)]
     {
         use crate::thor::get_thor_binary_path;
-        get_thor_binary_path(context, &version_info.version_number)
+        get_thor_binary_path(context, &download_info.version_number)
             .create_file()
             .unwrap();
         Ok(())

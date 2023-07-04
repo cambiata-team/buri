@@ -1,6 +1,6 @@
 use files::cli_config::SetVersionError;
 use prost::DecodeError;
-use protos::version::VersionInfoError;
+use protos::version::GetVersionDownloadInfoResponseError;
 use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug, PartialEq)]
@@ -15,8 +15,8 @@ pub enum CliError {
     NoSupportedChecksum,
     ChecksumNotValidHex(String),
     SetThorVersionError(SetVersionError),
-    VersionInfoDecodeError(DecodeError),
-    VersionInfoMessageError(VersionInfoError),
+    DownloadInfoResponseDecodeError(DecodeError),
+    DownloadInfoResponseError(GetVersionDownloadInfoResponseError),
     NoDownloadUrls,
     TemporaryDirectoryCreationError(String),
     CreateTarballFileError(String),
@@ -56,9 +56,9 @@ impl Display for CliError {
                 Self::ChecksumNotValidHex(checksum) =>
                     format!("Checksum is not valid hex: {checksum}"),
                 Self::SetThorVersionError(error) => format!("Error setting Thor version: {error}"),
-                Self::VersionInfoDecodeError(error) =>
+                Self::DownloadInfoResponseDecodeError(error) =>
                     format!("Error decoding version info: {error}"),
-                Self::VersionInfoMessageError(error) =>
+                Self::DownloadInfoResponseError(error) =>
                     format!("Error parsing version info: {error:?}"),
                 Self::NoDownloadUrls => "No download URLs".to_string(),
                 Self::TemporaryDirectoryCreationError(message) =>

@@ -145,14 +145,46 @@ pub fn validate_get_version_download_info_request(
     Ok(())
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ParseSemanticVersionError {
-    MissingMajorVersion,
-    MissingMinorVersion,
-    MissingPatchVersion,
-    InvalidMajorVersion(std::num::ParseIntError),
-    InvalidMinorVersion(std::num::ParseIntError),
-    InvalidPatchVersion(std::num::ParseIntError),
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum GetVersionDownloadInfoResponseError {
+    DownloadUrlError(DownloadUrlError),
+    MissingDownloadUrls,
+    InvalidVersion,
+    UnspecifiedHashFunction,
+    EmptyChecksumHash,
+    MissingChecksum,
+}
+
+pub fn validate_get_version_download_info_response(
+    response: &GetVersionDownloadInfoResponse,
+) -> Result<(), GetVersionDownloadInfoResponseError> {
+    if response.download_urls.is_empty() {
+        return Err(GetVersionDownloadInfoResponseError::MissingDownloadUrls);
+    }
+    for url in &response.download_urls {
+        validate_download_url(url)
+            .map_err(GetVersionDownloadInfoResponseError::DownloadUrlError)?;
+    }
+
+    match &response.checksum {
+        Some(checksum) => {
+            if checksum.hash_function() == HashFunction::Unspecified {
+                return Err(GetVersionDownloadInfoResponseError::UnspecifiedHashFunction);
+            }
+            if checksum.checksum.is_empty() {
+                return Err(GetVersionDownloadInfoResponseError::EmptyChecksumHash);
+            }
+        }
+        None => {
+            return Err(GetVersionDownloadInfoResponseError::MissingChecksum);
+        }
+    }
+
+    if !is_valid_version(&response.version_number) {
+        return Err(GetVersionDownloadInfoResponseError::InvalidVersion);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -274,11 +306,13 @@ mod test {
         );
     }
 
+    const GITHUB_DOWNLOAD_URL:&str = "https://github.com/cambiata-team/buri/releases/download/0.2.0/cli-aarch64-apple-darwin.tar.gz";
+
     #[test]
     fn github_download_url_is_valid() {
         assert_eq!(
             // An actual download URL from an uploaded asset on GitHub.
-            validate_download_url("https://github.com/cambiata-team/buri/releases/download/0.2.0/cli-aarch64-apple-darwin.tar.gz"),
+            validate_download_url(GITHUB_DOWNLOAD_URL),
             Ok(())
         );
     }
@@ -417,6 +451,73 @@ mod test {
         assert_eq!(
             validate_get_version_download_info_request(&request),
             Err(GetVersionDownloadInfoError::InvalidSupportedHashFunction)
+        );
+    }
+
+    fn make_valid_get_version_download_info_response() -> GetVersionDownloadInfoResponse {
+        let mut response = GetVersionDownloadInfoResponse {
+            version_number: "2023-07-04".into(),
+            ..Default::default()
+        };
+        response.download_urls.push(GITHUB_DOWNLOAD_URL.into());
+
+        let mut checksum = Checksum::default();
+        checksum.set_hash_function(HashFunction::Sha256);
+        checksum.checksum = "deadbeef".into();
+        response.checksum = Some(checksum);
+
+        response
+    }
+
+    // validate_get_version_download_info_response tests
+
+    #[test]
+    fn valid_get_version_download_info_response_succeeds() {
+        assert_eq!(
+            validate_get_version_download_info_response(
+                &make_valid_get_version_download_info_response()
+            ),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_response_must_include_version_number() {
+        let mut response = make_valid_get_version_download_info_response();
+        response.version_number = "".into();
+        assert_eq!(
+            validate_get_version_download_info_response(&response),
+            Err(GetVersionDownloadInfoResponseError::InvalidVersion)
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_response_must_include_download_urls() {
+        let mut response = make_valid_get_version_download_info_response();
+        response.download_urls.clear();
+        assert_eq!(
+            validate_get_version_download_info_response(&response),
+            Err(GetVersionDownloadInfoResponseError::MissingDownloadUrls)
+        );
+    }
+
+    #[test]
+    fn get_version_download_info_response_must_include_valid_urls() {
+        let mut response = make_valid_get_version_download_info_response();
+        response.download_urls[0] = "https://i-am-a-scam.com".into();
+        assert!(matches!(
+            validate_get_version_download_info_response(&response),
+            Err(GetVersionDownloadInfoResponseError::DownloadUrlError(_))
+        ));
+    }
+
+    #[test]
+    fn get_version_download_info_response_must_include_checksum() {
+        let mut response = make_valid_get_version_download_info_response();
+        response.checksum = None;
+        assert_eq!(
+            validate_get_version_download_info_response(&response),
+            Err(GetVersionDownloadInfoResponseError::MissingChecksum)
         );
     }
 }

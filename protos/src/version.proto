@@ -127,4 +127,6 @@ message GetVersionDownloadInfoResponse {
 
   // The cryptographic checksum of the executable.
   Checksum checksum = 2;
+
+  string version_number = 3;
 }

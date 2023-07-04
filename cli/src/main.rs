@@ -97,7 +97,7 @@ mod test {
     async fn downloads_latest_thor_version_if_not_configured() {
         let mut vio = VioFakeBuilder::new()
             .expect_stdout(DETERMINING_LATEST_VERSION_MESSAGE)
-            .expect_stdout("Downloading version latest...\n")
+            .expect_stdout("Downloading version 0.1.0...\n")
             .build();
         let context = Context::test();
         context

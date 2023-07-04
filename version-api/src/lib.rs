@@ -72,6 +72,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             let response = GetVersionDownloadInfoResponse {
                 download_urls: version_info.download_urls,
                 checksum: Some(version_info.checksums[0].clone()),
+                version_number: version_info.version_number,
             };
             let mut response = Response::ok(encode_message_to_base_64(&response))?;
             // Cache for 1 hour. In theory, the version info should rarely change per quest.
