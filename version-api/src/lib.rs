@@ -5,7 +5,7 @@ use parse_release::{
 };
 use prost::Message;
 use protos::{
-    decode_base_64_to_bytes, encode_message_to_base_64, encode_message_to_bytes,
+    decode_base_64_to_bytes, encode_message_to_base_64,
     version::{
         validate_get_version_download_info_request, validate_version_info_message,
         version_info_key::Version, Architecture, Channel, GetVersionDownloadInfoRequest,
@@ -73,7 +73,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                 download_urls: version_info.download_urls,
                 checksum: Some(version_info.checksums[0].clone()),
             };
-            let mut response = Response::from_bytes(encode_message_to_bytes(&response))?;
+            let mut response = Response::ok(encode_message_to_base_64(&response))?;
             // Cache for 1 hour. In theory, the version info should rarely change per quest.
             // However setting it to one hour allows us to update the version info when
             // there should be a change (e.g., yank an insecure version, add new download URLs, etc.).

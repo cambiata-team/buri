@@ -6,6 +6,10 @@ edition = "2021"
 [dependencies]
 dirs.workspace = true
 files.workspace = true
+macros.workspace = true
+prost.workspace = true
+protos.workspace = true
+reqwest.workspace = true
 tokio.workspace = true
 vfs.workspace = true
 virtual-io.workspace = true

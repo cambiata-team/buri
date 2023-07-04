@@ -6,7 +6,7 @@ use version::{is_valid_version, normalize_version};
 // Do not change. This will lead to incompatibilities between versions.
 pub const CLI_CONFIG_FILE_NAME: &str = ".burirc.toml";
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct CliConfig {
     buri_version: Option<String>,
 }
@@ -17,6 +17,11 @@ pub enum CliConfigParseError {
     DeserializationError,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum SetVersionError {
+    InvalidVersion,
+}
+
 impl fmt::Display for CliConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", toml::to_string(self).unwrap())
@@ -24,6 +29,10 @@ impl fmt::Display for CliConfig {
 }
 
 impl CliConfig {
+    pub fn new() -> Self {
+        Self { buri_version: None }
+    }
+
     pub fn from(contents: &str) -> Result<Self, CliConfigParseError> {
         let mut file = toml::from_str::<CliConfig>(contents)
             .map_err(|_| CliConfigParseError::DeserializationError)?;
@@ -38,6 +47,14 @@ impl CliConfig {
 
     pub fn get_version(&self) -> Option<String> {
         self.buri_version.clone()
+    }
+
+    pub fn set_version(&mut self, version: &str) -> Result<(), SetVersionError> {
+        if !is_valid_version(version) {
+            return Err(SetVersionError::InvalidVersion);
+        }
+        self.buri_version = Some(normalize_version(version).to_string());
+        Ok(())
     }
 }
 
