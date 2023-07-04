@@ -5,9 +5,12 @@ use version::{is_valid_version, normalize_version};
 
 // Do not change. This will lead to incompatibilities between versions.
 pub const CLI_CONFIG_FILE_NAME: &str = ".burirc.toml";
+// Do not change. This will lead to incompatibilities between versions.
+pub const BURI_VERSION_KEY: &str = "buri_version";
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct CliConfig {
+    // Do not change. This will lead to incompatibilities between versions.
     buri_version: Option<String>,
 }
 

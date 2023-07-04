@@ -11,6 +11,7 @@ prost.workspace = true
 protos.workspace = true
 reqwest.workspace = true
 tokio.workspace = true
+toml_edit.workspace = true
 vfs.workspace = true
 virtual-io.workspace = true
 version.workspace = true

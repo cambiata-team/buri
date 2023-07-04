@@ -1,6 +1,7 @@
 // This file contains code that is impure and cannot be tested.
 
 use crate::{context::Context, thor::get_thor_binary_directory, CliError};
+use version::is_valid_version;
 use virtual_io::VirtualIo;
 
 pub const DETERMINING_LATEST_VERSION_MESSAGE: &str =
@@ -12,13 +13,19 @@ pub async fn download_thor(
     vio: &mut impl VirtualIo,
     version: Option<String>,
 ) -> Result<String, CliError> {
-    if version.is_none() {
-        vio.print(DETERMINING_LATEST_VERSION_MESSAGE);
+    match &version {
+        Some(version) => {
+            if !is_valid_version(version) {
+                return Err(CliError::InvalidThorVersion);
+            }
+        }
+        None => {
+            vio.print(DETERMINING_LATEST_VERSION_MESSAGE);
+        }
     }
     let (version, checksum) = fetch_version_info(version).await?;
     vio.println(format!("Downloading version {}...", version));
     download_and_extract_binary(context, &version, &checksum).await?;
-    // TODO: Write to config file the new version.
     Ok(version)
 }
 
@@ -83,13 +90,16 @@ async fn download_and_extract_binary(
     version: &str,
     checksum: &str,
 ) -> Result<(), CliError> {
-    // Ensures the directory exists.
-    get_thor_binary_directory(context, version)
-        .create_dir_all()
-        .unwrap();
+    let thor_directory = get_thor_binary_directory(context, version);
+    // Ensures the thor directory exists.
+    thor_directory.create_dir_all().unwrap();
 
     #[cfg(not(test))]
     {
+        // TODO: download
+        // TODO: check SHA - is the SHA for the executable or the tarball?
+        // TODO: extract
+        // TODO: make executable
         Ok(())
     }
     #[cfg(test)]

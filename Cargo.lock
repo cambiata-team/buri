@@ -259,6 +259,7 @@ dependencies = [
  "protos",
  "reqwest",
  "tokio",
+ "toml_edit",
  "version",
  "vfs",
  "virtual-io",
