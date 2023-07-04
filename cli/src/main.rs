@@ -1,8 +1,11 @@
 use std::env;
 
+use context::Context;
 use files::workspace_file::WORKSPACE_FILE_NAME;
-use vfs::{PhysicalFS, VfsPath};
 use virtual_io::{Vio, VirtualIo};
+
+mod context;
+mod thor;
 
 const MUST_INITIALIZE_MESSAGE: &str = "
 You must be in a workspace to use Buri.
@@ -40,21 +43,24 @@ pub enum CliError {
 //          - If config file does not exist, call version API for latest version of Thor and download. Create config file.
 //      - Call that version of Thor, passing through all arguments
 // x 3. Inform them to call `buri init` to initialize a workspace.
-fn main_impl(root: &VfsPath, vio: &mut impl VirtualIo, args: Vec<String>) -> Result<(), CliError> {
-    let workspace_file = root
+fn main_impl(context: Context, vio: &mut impl VirtualIo) -> Result<(), CliError> {
+    let workspace_file = context
+        .root
         .join(WORKSPACE_FILE_NAME)
         .map_err(|_| CliError::VfsError)?;
-    if workspace_file.exists().map_err(|_| CliError::VfsError)? {
+    if workspace_file.exists().map_err(|_| CliError::VfsError)?
+        && workspace_file.is_file().map_err(|_| CliError::VfsError)?
+    {
         vio.println("Workspace already exists, no need to create a new one.");
         return Ok(());
     }
 
-    if args.is_empty() {
+    if context.args.is_empty() {
         vio.print(MUST_SPECIFY_A_COMMAND_MESSAGE);
         return Err(CliError::MustSpecifyACommand);
     }
 
-    if let Some(first_arg) = args.get(0) {
+    if let Some(first_arg) = context.args.get(0) {
         if first_arg == "init" {
             // Initialize repo
             return Ok(());
@@ -71,9 +77,9 @@ pub fn main() {
     let args = raw_args.collect::<Vec<String>>();
 
     let mut vio = Vio::new();
-    let root: VfsPath = PhysicalFS::new(std::env::current_dir().unwrap()).into();
+    let context = Context::new(args);
 
-    let result = main_impl(&root, &mut vio, args);
+    let result = main_impl(context, &mut vio);
     if result.is_err() {
         std::process::exit(1);
     }
@@ -89,8 +95,8 @@ mod test {
         let mut vio = VioFakeBuilder::new()
             .expect_stdout(MUST_SPECIFY_A_COMMAND_MESSAGE)
             .build();
-        let root: VfsPath = PhysicalFS::new(std::env::current_dir().unwrap()).into();
-        let result = main_impl(&root, &mut vio, vec![]);
+        let context = Context::test();
+        let result = main_impl(context, &mut vio);
         assert_eq!(result, Err(CliError::MustSpecifyACommand));
         assert_eq!(vio.get_actual(), vio.get_expected());
     }
@@ -100,8 +106,9 @@ mod test {
         let mut vio = VioFakeBuilder::new()
             .expect_stdout(MUST_INITIALIZE_MESSAGE)
             .build();
-        let root: VfsPath = PhysicalFS::new(std::env::current_dir().unwrap()).into();
-        let result = main_impl(&root, &mut vio, vec!["build".to_string()]);
+        let mut context = Context::test();
+        context.args.push("build".to_string());
+        let result = main_impl(context, &mut vio);
         assert_eq!(result, Err(CliError::MustInitialize));
         assert_eq!(vio.get_actual(), vio.get_expected());
     }

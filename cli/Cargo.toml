@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+dirs.workspace = true
 files = { path = "../utils/files" }
 vfs.workspace = true
 virtual-io.workspace = true

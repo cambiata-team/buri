@@ -17,6 +17,7 @@ members = [
 base64 = "0.21.2"
 bytes = "1.4.0"
 clap = { version = "4.3.10", features = ["derive"] }
+dirs = "5.0.1"
 prost = "0.11.9"
 prost-build = "0.11.9"
 protobuf-src = "1.1.0"
