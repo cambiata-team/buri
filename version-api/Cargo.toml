@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-macros = { path = "../utils/macros" }
+macros.workspace = true
 prost.workspace = true
-protos = { path = "../protos" }
+protos.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 worker.workspace = true
-version = { path = "../utils/version" }
+version.workspace = true
 
 
 # https://github.com/rustwasm/wasm-pack/issues/1247
