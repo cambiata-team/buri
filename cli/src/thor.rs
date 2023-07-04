@@ -1,5 +1,7 @@
 use crate::context::Context;
+use dirs::config_dir;
 use files::cli_config::{CliConfig, CLI_CONFIG_FILE_NAME};
+use std::path::PathBuf;
 use vfs::VfsPath;
 
 pub fn get_configured_thor_version(context: &Context) -> Option<String> {
@@ -13,13 +15,12 @@ pub fn get_configured_thor_version(context: &Context) -> Option<String> {
 }
 
 pub fn get_thor_binary_path(context: &Context, version: &str) -> VfsPath {
-    get_thor_binary_directory(context, version)
-        .join("thor")
-        .unwrap()
+    context.cache_dir.join(format!("thor@{version}")).unwrap()
 }
 
-pub fn get_thor_binary_directory(context: &Context, version: &str) -> VfsPath {
-    context.cache_dir.join(format!("thor@{version}")).unwrap()
+pub fn get_thor_binary_binary_pathbuf(version: &str) -> PathBuf {
+    let config = config_dir().unwrap();
+    config.join("buri").join(format!("thor@{version}"))
 }
 
 pub fn is_thor_version_downloaded(context: &Context, version: &str) -> bool {
@@ -99,9 +100,6 @@ mod test {
     fn returns_true_if_thor_binary_exists() {
         let context = Context::test();
         let version = "0.4.0";
-        get_thor_binary_directory(&context, version)
-            .create_dir_all()
-            .unwrap();
         get_thor_binary_path(&context, version)
             .create_file()
             .unwrap();

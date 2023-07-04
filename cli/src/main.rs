@@ -32,12 +32,12 @@ async fn main_impl(
             return Err(CliError::MustInitialize);
         }
     }
-
     let configured_thor_version = get_configured_thor_version(&context);
     let thor_version = match configured_thor_version {
         Some(version) => {
             if is_thor_version_downloaded(&context, &version) {
-                version
+                let thor_binary_path = get_thor_binary_path(&context, &version);
+                return Ok((thor_binary_path.as_str().to_string(), context.args));
             } else {
                 download_thor(&context, vio, Some(version)).await?
             }
@@ -68,7 +68,11 @@ pub async fn main() {
         Ok((exec, args)) => {
             // Only works on Unix systems.
             // https://stackoverflow.com/a/53479765/11506995
-            Command::new(exec).args(args).exec();
+            let error = Command::new(exec).args(args).exec();
+            // If we get here, the exec failed. See exec docs for
+            // more details.
+            println!("{:#?}", error);
+            std::process::exit(1)
         }
         Err(e) => {
             println!("{e}");

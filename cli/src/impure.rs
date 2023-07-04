@@ -1,6 +1,6 @@
 // This file contains code that is impure and cannot be tested.
 
-use crate::{context::Context, errors::CliError, thor::get_thor_binary_directory};
+use crate::{context::Context, errors::CliError};
 use protos::version::GetVersionDownloadInfoResponse;
 use version::is_valid_version;
 use virtual_io::VirtualIo;
@@ -91,21 +91,14 @@ async fn download_and_extract_binary(
     context: &Context,
     download_info: &GetVersionDownloadInfoResponse,
 ) -> Result<(), CliError> {
-    let thor_directory = get_thor_binary_directory(context, &download_info.version_number);
-    // Ensures the thor directory exists.
-    thor_directory.create_dir_all().unwrap();
-
+    println!("hello");
     #[cfg(not(test))]
     {
         use crate::security::validate_checksum;
-        use crate::thor::get_thor_binary_path;
+        use crate::thor::get_thor_binary_binary_pathbuf;
         use flate2::bufread::GzDecoder;
-        use std::fs::File;
-        use std::io::prelude::*;
         use std::io::BufReader;
-        use std::os::unix::prelude::PermissionsExt;
         use tar::Archive;
-        use tempfile::Builder;
 
         if download_info.download_urls.is_empty() {
             return Err(CliError::NoDownloadUrls);
@@ -113,27 +106,9 @@ async fn download_and_extract_binary(
 
         let url = download_info.download_urls[0].clone();
 
-        let temporary_directory = Builder::new()
-            .prefix("thor")
-            .tempdir()
-            .map_err(|e| CliError::TemporaryDirectoryCreationError(e.to_string()))?;
-
         let response = reqwest::get(url)
             .await
             .map_err(|e| CliError::NetworkError(e.to_string()))?;
-
-        let mut tarball_file = {
-            let file_name = response
-                .url()
-                .path_segments()
-                .and_then(|segments| segments.last())
-                .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                .unwrap_or("tmp.bin");
-
-            let fname = temporary_directory.path().join(file_name);
-
-            File::create(fname).map_err(|e| CliError::CreateTarballFileError(e.to_string()))?
-        };
 
         let bytes = response
             .bytes()
@@ -142,38 +117,16 @@ async fn download_and_extract_binary(
 
         validate_checksum(&bytes, download_info)?;
 
-        tarball_file
-            .write_all(&bytes)
-            .map_err(|e| CliError::WriteToTarballFileError(e.to_string()))?;
-
-        let reader = BufReader::new(tarball_file);
+        let thor_binary_path = get_thor_binary_binary_pathbuf(&download_info.version_number);
+        let reader = BufReader::new(&bytes[..]);
         let tar = GzDecoder::new(reader);
         let mut archive = Archive::new(tar);
-        archive
-            .unpack(&temporary_directory)
-            .map_err(|e| CliError::UnpackTarballError(e.to_string()))?;
-
-        let temporary_thor_binary = temporary_directory.path().join("thor");
-
-        let thor_binary = get_thor_binary_path(context, &download_info.version_number);
-
-        std::fs::rename(
-            temporary_thor_binary.to_str().unwrap(),
-            thor_binary.as_str(),
-        )
-        .map_err(|e| CliError::RenameThorBinaryError(e.to_string()))?;
-
-        // Mark it as executable
-        let mut perms = std::fs::metadata(thor_binary.as_str())
-            .map_err(|e| CliError::CannotReadThorBinaryPermissions(e.to_string()))?
-            .permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(thor_binary.as_str(), perms)
-            .map_err(|e| CliError::CannotMarkBinaryAsExecutable(e.to_string()))?;
-
-        // Cleanup temporary files
-        std::fs::remove_dir_all(temporary_directory)
-            .map_err(|e| CliError::CannotRemoveTemporaryFiles(e.to_string()))?;
+        archive.set_preserve_permissions(true);
+        archive.set_overwrite(true);
+        for file in archive.entries().unwrap() {
+            let mut file = file.unwrap();
+            file.unpack(&thor_binary_path).unwrap();
+        }
 
         Ok(())
     }
