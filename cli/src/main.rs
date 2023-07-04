@@ -23,8 +23,14 @@ async fn main_impl(
         .root
         .join(WORKSPACE_FILE_NAME)
         .map_err(|e| CliError::VfsError(e.to_string()))?;
-    if !workspace_file.exists().unwrap_or(false) || !workspace_file.is_file().unwrap_or(false) {
-        return Err(CliError::MustInitialize);
+    // if first command is not init
+    if let Some(command) = context.args.get(0) {
+        if command != "init"
+            && (!workspace_file.exists().unwrap_or(false)
+                || !workspace_file.is_file().unwrap_or(false))
+        {
+            return Err(CliError::MustInitialize);
+        }
     }
 
     let configured_thor_version = get_configured_thor_version(&context);
@@ -124,5 +130,14 @@ mod test {
         main_impl(context, &mut vio).await.unwrap();
 
         assert_eq!(vio.get_actual(), vio.get_expected());
+    }
+
+    #[tokio::test]
+    async fn init_command_downloads_and_runs_thor_even_outside_a_workspace() {
+        let context = Context::test();
+        let mut vio = VioFakeBuilder::new().build();
+
+        let result = main_impl(context, &mut vio).await;
+        assert_ne!(result, Err(CliError::MustInitialize));
     }
 }
