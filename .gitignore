@@ -29,3 +29,5 @@ dist/
 
 WORKSPACE.toml
 .buri-version
+.burirc
+.burirc.toml

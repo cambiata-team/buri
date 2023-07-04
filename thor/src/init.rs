@@ -149,7 +149,7 @@ mod test {
     fn prints_that_version_file_was_created() {
         let root: VfsPath = MemoryFS::new().into();
         let mut vio = virtual_io::VioFakeBuilder::new()
-            .expect_stdout("Created ./.burirc\n")
+            .expect_stdout("Created ./.burirc.toml\n")
             .build();
         create_version_file(&root, &mut vio).unwrap();
         assert_eq!(vio.get_actual(), vio.get_expected());

@@ -12,8 +12,14 @@ pub fn get_configured_thor_version(context: &Context) -> Option<String> {
     version_file.get_version()
 }
 
-pub fn get_thor_binary_path(context: &Context, version: String) -> Option<VfsPath> {
-    context.cache_dir.join(format!("thor@{version}")).ok()
+pub fn get_thor_binary_path(context: &Context, version: String) -> VfsPath {
+    get_thor_binary_directory(context, version)
+        .join("thor")
+        .unwrap()
+}
+
+pub fn get_thor_binary_directory(context: &Context, version: String) -> VfsPath {
+    context.cache_dir.join(format!("thor@{version}")).unwrap()
 }
 
 #[cfg(test)]
@@ -72,7 +78,7 @@ mod test {
         let context = Context::test();
         assert_eq!(
             get_thor_binary_path(&context, "0.4.0".to_string()),
-            Some(context.cache_dir.join("thor@0.4.0").unwrap())
+            context.cache_dir.join("thor@0.4.0/thor").unwrap()
         );
     }
 }

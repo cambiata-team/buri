@@ -2,6 +2,8 @@ use std::{env, os::unix::process::CommandExt, process::Command};
 
 use context::Context;
 use files::workspace_file::WORKSPACE_FILE_NAME;
+use thor::{get_configured_thor_version, get_thor_binary_path};
+use version::is_valid_version;
 use virtual_io::{Vio, VirtualIo};
 
 mod context;
@@ -15,14 +17,6 @@ $   buri init
 
 Use `buri --help` for more information.";
 
-const MUST_SPECIFY_A_COMMAND_MESSAGE: &str = "
-Please specify a command.
-
-Use `buri --help` for more information.
-
-$   buri --help
-";
-
 // What if the WORKSPACE.toml exists but not the .buri-version?
 // Use the latest version of Thor and create the .buri-version.
 
@@ -31,50 +25,54 @@ pub enum CliError {
     VfsError,
     MustInitialize,
     MustSpecifyACommand,
+    InvalidThorVersion,
 }
 
-//   1. Is there a workspace file?
-//      - Find the current Thor version
-//      - Check if that version of Thor exists
-//          - If not, download and install it
-//      - Call that version of Thor, passing through all arguments
-//   2. Is there command init?
-//      - Check CLI config file for latest installed version of Thor
-//          - If config file does not exist, call version API for latest version of Thor and download. Create config file.
-//      - Call that version of Thor, passing through all arguments
-// x 3. Inform them to call `buri init` to initialize a workspace.
-fn main_impl(
+async fn main_impl(
     context: Context,
     vio: &mut impl VirtualIo,
 ) -> Result<Option<(String, Vec<String>)>, CliError> {
-    if context.args.is_empty() {
-        vio.print(MUST_SPECIFY_A_COMMAND_MESSAGE);
-        return Err(CliError::MustSpecifyACommand);
-    }
-
     let workspace_file = context
         .root
         .join(WORKSPACE_FILE_NAME)
         .map_err(|_| CliError::VfsError)?;
-    if workspace_file.exists().map_err(|_| CliError::VfsError)?
-        && workspace_file.is_file().map_err(|_| CliError::VfsError)?
-    {
-        vio.println("Workspace already exists, no need to create a new one.");
-        return Ok(None);
+    if !workspace_file.exists().unwrap_or(false) || !workspace_file.is_file().unwrap_or(false) {
+        vio.print(MUST_INITIALIZE_MESSAGE);
+        return Err(CliError::MustInitialize);
     }
 
-    if let Some(first_arg) = context.args.get(0) {
-        if first_arg == "init" {
-            // Initialize repo
-            return Ok(None);
+    let configured_thor_version = get_configured_thor_version(&context);
+    let thor_version = match configured_thor_version {
+        Some(version) => version,
+        None => {
+            // TODO: download from the internet
+            vio.print("No Thor version configured. Using latest version.");
+            "latest".to_string()
         }
+    };
+
+    // Should never happen, but check just in case.
+    if !is_valid_version(&thor_version) {
+        vio.print("Invalid Thor version.");
+        return Err(CliError::InvalidThorVersion);
     }
 
-    vio.print(MUST_INITIALIZE_MESSAGE);
-    Err(CliError::MustInitialize)
+    let thor_binary_path = get_thor_binary_path(&context, thor_version);
+    if !thor_binary_path.exists().unwrap_or(false) || !thor_binary_path.is_file().unwrap_or(false) {
+        // TODO: download from the internet
+        // 1. Download
+        // 2. Extract
+        // 3. Make executable
+    }
+
+    Ok(Some((
+        thor_binary_path.read_to_string().unwrap(),
+        context.args,
+    )))
 }
 
-pub fn main() {
+#[tokio::main]
+pub async fn main() {
     let mut raw_args = env::args();
     raw_args.next(); // Skip the executable name
     let args = raw_args.collect::<Vec<String>>();
@@ -82,7 +80,7 @@ pub fn main() {
     let mut vio = Vio::new();
     let context = Context::new(args);
 
-    let result = main_impl(context, &mut vio);
+    let result = main_impl(context, &mut vio).await;
     match result {
         Ok(Some((exec, args))) => {
             // Only works on Unix systems.
@@ -99,42 +97,14 @@ mod test {
     use super::*;
     use virtual_io::VioFakeBuilder;
 
-    #[test]
-    fn no_command_errors() {
-        let mut vio = VioFakeBuilder::new()
-            .expect_stdout(MUST_SPECIFY_A_COMMAND_MESSAGE)
-            .build();
-        let context = Context::test();
-        let result = main_impl(context, &mut vio);
-        assert_eq!(result, Err(CliError::MustSpecifyACommand));
-        assert_eq!(vio.get_actual(), vio.get_expected());
-    }
-
-    #[test]
-    fn must_specify_command_even_if_workspace_file_is_present() {
-        let mut vio = VioFakeBuilder::new()
-            .expect_stdout(MUST_SPECIFY_A_COMMAND_MESSAGE)
-            .build();
-        let context = Context::test();
-        context
-            .root
-            .join(WORKSPACE_FILE_NAME)
-            .unwrap()
-            .create_file()
-            .unwrap();
-        let result = main_impl(context, &mut vio);
-        assert_eq!(result, Err(CliError::MustSpecifyACommand));
-        assert_eq!(vio.get_actual(), vio.get_expected());
-    }
-
-    #[test]
-    fn command_that_is_not_init_outside_workspace_errors() {
+    #[tokio::test]
+    async fn command_that_is_not_init_outside_workspace_errors() {
         let mut vio = VioFakeBuilder::new()
             .expect_stdout(MUST_INITIALIZE_MESSAGE)
             .build();
         let mut context = Context::test();
         context.args.push("build".to_string());
-        let result = main_impl(context, &mut vio);
+        let result = main_impl(context, &mut vio).await;
         assert_eq!(result, Err(CliError::MustInitialize));
         assert_eq!(vio.get_actual(), vio.get_expected());
     }

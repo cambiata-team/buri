@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use version::{is_valid_version, normalize_version};
 
 // Do not change. This will lead to incompatibilities between versions.
-pub const CLI_CONFIG_FILE_NAME: &str = ".burirc";
+pub const CLI_CONFIG_FILE_NAME: &str = ".burirc.toml";
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct CliConfig {
