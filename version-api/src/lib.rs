@@ -47,10 +47,12 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
                 GetVersionDownloadInfoRequest::decode(data.as_slice()),
                 Response::error("Bad request: cannot decode request proto", 400)
             );
-            return_if_error!(
-                validate_get_version_download_info_request(&request),
-                Response::error("Bad request: invalid version download info request", 400)
-            );
+            if let Err(error) = validate_get_version_download_info_request(&request) {
+                return Response::error(
+                    format!("Bad request: invalid version download info request - {error:?}"),
+                    400,
+                );
+            }
             let key = create_version_info_key_from_request(&request);
             let version_kv = ctx.kv("VERSIONS")?;
             let version_info_base64 = return_if_error!(
