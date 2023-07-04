@@ -13,6 +13,8 @@ jobs:
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
 
+      - uses: fregante/setup-git-user@v2.0.1
+
       # Create and push a new tag with the current date
       - run: git tag -a ${{ steps.date.outputs.date }} -m "Nightly"
       - run: git push origin ${{ steps.date.outputs.date }}
