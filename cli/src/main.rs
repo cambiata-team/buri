@@ -9,6 +9,7 @@ use virtual_io::{Vio, VirtualIo};
 mod config;
 mod context;
 mod impure;
+mod security;
 mod thor;
 mod version_api;
 
@@ -31,6 +32,7 @@ pub enum CliError {
     InvalidThorVersion,
     NetworkError,
     InternalError,
+    InvalidChecksum,
 }
 
 async fn main_impl(

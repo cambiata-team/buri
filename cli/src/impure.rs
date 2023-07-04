@@ -1,6 +1,7 @@
 // This file contains code that is impure and cannot be tested.
 
 use crate::{context::Context, thor::get_thor_binary_directory, CliError};
+use protos::version::VersionInfo;
 use version::is_valid_version;
 use virtual_io::VirtualIo;
 
@@ -23,13 +24,16 @@ pub async fn download_thor(
             vio.print(DETERMINING_LATEST_VERSION_MESSAGE);
         }
     }
-    let (version, checksum) = fetch_version_info(version).await?;
-    vio.println(format!("Downloading version {}...", version));
-    download_and_extract_binary(context, &version, &checksum).await?;
-    Ok(version)
+    let version_info = fetch_version_info(version).await?;
+    vio.println(format!(
+        "Downloading version {}...",
+        version_info.version_number
+    ));
+    download_and_extract_binary(context, &version_info).await?;
+    Ok(version_info.version_number)
 }
 
-async fn fetch_version_info(version: Option<String>) -> Result<(String, String), CliError> {
+async fn fetch_version_info(version: Option<String>) -> Result<VersionInfo, CliError> {
     #[cfg(not(test))]
     {
         use crate::version_api::{
@@ -37,10 +41,7 @@ async fn fetch_version_info(version: Option<String>) -> Result<(String, String),
         };
         use macros::return_if_error;
         use prost::Message;
-        use protos::{
-            decode_base_64_to_bytes,
-            version::{validate_version_info_message, HashFunction, VersionInfo},
-        };
+        use protos::{decode_base_64_to_bytes, version::validate_version_info_message};
         use std::env::consts::ARCH;
         use std::env::consts::OS;
 
@@ -64,48 +65,111 @@ async fn fetch_version_info(version: Option<String>) -> Result<(String, String),
             validate_version_info_message(&version_info),
             Err(CliError::InternalError)
         );
-        let mut supported_checksum = String::from("");
-        for checksum in &version_info.checksums {
-            if checksum.hash_function == HashFunction::Sha256 as i32 {
-                supported_checksum = checksum.checksum.clone();
-                break;
-            }
-        }
-        if supported_checksum.is_empty() {
-            return Err(CliError::InternalError);
-        }
-        Ok((version_info.version_number, supported_checksum))
+        Ok(version_info)
     }
     #[cfg(test)]
     {
-        Ok((
-            version.unwrap_or(String::from("latest")),
-            "checksum".to_string(),
-        ))
+        use protos::version::{Checksum, HashFunction};
+
+        let mut checksum = Checksum::default();
+        checksum.set_hash_function(HashFunction::Sha256);
+        checksum.checksum = "checksum".to_string();
+
+        let info = VersionInfo {
+            version_number: version.unwrap_or("latest".to_string()),
+            checksums: vec![checksum],
+            ..Default::default()
+        };
+        Ok(info)
     }
 }
 
 async fn download_and_extract_binary(
     context: &Context,
-    version: &str,
-    checksum: &str,
+    version_info: &VersionInfo,
 ) -> Result<(), CliError> {
-    let thor_directory = get_thor_binary_directory(context, version);
+    let thor_directory = get_thor_binary_directory(context, &version_info.version_number);
     // Ensures the thor directory exists.
     thor_directory.create_dir_all().unwrap();
 
     #[cfg(not(test))]
     {
-        // TODO: download
-        // TODO: check SHA - is the SHA for the executable or the tarball?
-        // TODO: extract
-        // TODO: make executable
+        use crate::security::validate_checksum;
+        use crate::thor::get_thor_binary_path;
+        use flate2::bufread::GzDecoder;
+        use std::fs::File;
+        use std::io::prelude::*;
+        use std::io::BufReader;
+        use std::os::unix::prelude::PermissionsExt;
+        use tar::Archive;
+        use tempfile::Builder;
+
+        if version_info.download_urls.is_empty() {
+            return Err(CliError::InternalError);
+        }
+
+        let url = version_info.download_urls[0].clone();
+
+        let temporary_directory = Builder::new()
+            .prefix("thor")
+            .tempdir()
+            .map_err(|_| CliError::InternalError)?;
+
+        let response = reqwest::get(url)
+            .await
+            .map_err(|_| CliError::NetworkError)?;
+
+        let mut tarball_file = {
+            let file_name = response
+                .url()
+                .path_segments()
+                .and_then(|segments| segments.last())
+                .and_then(|name| if name.is_empty() { None } else { Some(name) })
+                .unwrap_or("tmp.bin");
+
+            let fname = temporary_directory.path().join(file_name);
+
+            File::create(fname).map_err(|_| CliError::InternalError)?
+        };
+
+        let bytes = response.bytes().await.map_err(|_| CliError::NetworkError)?;
+
+        validate_checksum(&bytes, version_info)?;
+
+        tarball_file
+            .write_all(&bytes)
+            .map_err(|_| CliError::InternalError)?;
+
+        let reader = BufReader::new(tarball_file);
+        let tar = GzDecoder::new(reader);
+        let mut archive = Archive::new(tar);
+        archive
+            .unpack(&temporary_directory)
+            .map_err(|_| CliError::InternalError)?;
+
+        let temporary_thor_binary = temporary_directory.path().join("thor");
+
+        let thor_binary = get_thor_binary_path(context, &version_info.version_number);
+
+        std::fs::rename(
+            temporary_thor_binary.to_str().unwrap(),
+            thor_binary.as_str(),
+        )
+        .map_err(|_| CliError::InternalError)?;
+
+        // Mark it as executable
+        let mut perms = std::fs::metadata(thor_binary.as_str())
+            .map_err(|_| CliError::InternalError)?
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(thor_binary.as_str(), perms)
+            .map_err(|_| CliError::InternalError)?;
         Ok(())
     }
     #[cfg(test)]
     {
         use crate::thor::get_thor_binary_path;
-        get_thor_binary_path(context, version)
+        get_thor_binary_path(context, &version_info.version_number)
             .create_file()
             .unwrap();
         Ok(())

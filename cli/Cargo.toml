@@ -6,10 +6,15 @@ edition = "2021"
 [dependencies]
 dirs.workspace = true
 files.workspace = true
+flate2.workspace = true
+hex.workspace = true
 macros.workspace = true
 prost.workspace = true
 protos.workspace = true
 reqwest.workspace = true
+sha2.workspace = true
+tar.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 toml_edit.workspace = true
 vfs.workspace = true
