@@ -49,6 +49,7 @@ async fn main_impl(
 
 #[tokio::main]
 pub async fn main() {
+    openssl_probe::init_ssl_cert_env_vars();
     let mut raw_args = env::args();
     raw_args.next(); // Skip the executable name
     let args = raw_args.collect::<Vec<String>>();
