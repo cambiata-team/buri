@@ -88,10 +88,9 @@ async fn fetch_download_info(
 }
 
 async fn download_and_extract_binary(
-    context: &Context,
+    _context: &Context,
     download_info: &GetVersionDownloadInfoResponse,
 ) -> Result<(), CliError> {
-    println!("hello");
     #[cfg(not(test))]
     {
         use crate::security::validate_checksum;
@@ -133,7 +132,8 @@ async fn download_and_extract_binary(
     #[cfg(test)]
     {
         use crate::thor::get_thor_binary_path;
-        get_thor_binary_path(context, &download_info.version_number)
+
+        get_thor_binary_path(_context, &download_info.version_number)
             .create_file()
             .unwrap();
         Ok(())

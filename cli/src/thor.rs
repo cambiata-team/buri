@@ -18,6 +18,22 @@ pub fn get_thor_binary_path(context: &Context, version: &str) -> VfsPath {
     context.cache_dir.join(format!("thor@{version}")).unwrap()
 }
 
+pub fn get_thor_execution_path_string(_context: &Context, version: &str) -> String {
+    #[cfg(test)]
+    {
+        get_thor_binary_path(_context, version).as_str().to_string()
+    }
+    #[cfg(not(test))]
+    {
+        get_thor_binary_binary_pathbuf(version)
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string()
+    }
+}
+
+#[allow(dead_code)]
 pub fn get_thor_binary_binary_pathbuf(version: &str) -> PathBuf {
     let config = config_dir().unwrap();
     config.join("buri").join(format!("thor@{version}"))
@@ -85,7 +101,7 @@ mod test {
         let context = Context::test();
         assert_eq!(
             get_thor_binary_path(&context, "0.4.0"),
-            context.cache_dir.join("thor@0.4.0/thor").unwrap()
+            context.cache_dir.join("thor@0.4.0").unwrap()
         );
     }
 

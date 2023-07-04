@@ -4,7 +4,9 @@ use errors::CliError;
 use files::workspace_file::WORKSPACE_FILE_NAME;
 use impure::download_thor;
 use std::{env, os::unix::process::CommandExt, process::Command};
-use thor::{get_configured_thor_version, get_thor_binary_path, is_thor_version_downloaded};
+use thor::{
+    get_configured_thor_version, get_thor_execution_path_string, is_thor_version_downloaded,
+};
 use virtual_io::{Vio, VirtualIo};
 
 mod config;
@@ -36,8 +38,10 @@ async fn main_impl(
     let thor_version = match configured_thor_version {
         Some(version) => {
             if is_thor_version_downloaded(&context, &version) {
-                let thor_binary_path = get_thor_binary_path(&context, &version);
-                return Ok((thor_binary_path.as_str().to_string(), context.args));
+                return Ok((
+                    get_thor_execution_path_string(&context, &version),
+                    context.args,
+                ));
             } else {
                 download_thor(&context, vio, Some(version)).await?
             }
@@ -48,9 +52,9 @@ async fn main_impl(
 
     ensure_version_is_in_config(&context, &thor_version)?;
 
-    let thor_binary_path = get_thor_binary_path(&context, &thor_version);
+    let thor_path = get_thor_execution_path_string(&context, &thor_version);
 
-    Ok((thor_binary_path.as_str().to_string(), context.args))
+    Ok((thor_path, context.args))
 }
 
 #[tokio::main]
