@@ -79,7 +79,7 @@ mod test {
     #[test]
     fn test_create_version_info_key_from_request() {
         let key = create_version_info_key_from_request(&create_request());
-        assert_eq!(key, "CAIQASACKAI=");
+        assert_eq!(key, "CAIQASACKAI");
     }
 
     #[test]
@@ -177,8 +177,8 @@ mod test {
         };
         let version = "1.0.0";
         let (latest_key, version_key) = get_keys_from_binary_info(&info, version);
-        assert_eq!(latest_key, "CAIQASACKAI=");
-        assert_eq!(version_key, "CAIaBTEuMC4wIAIoAg==");
+        assert_eq!(latest_key, "CAIQASACKAI");
+        assert_eq!(version_key, "CAIaBTEuMC4wIAIoAg");
     }
 
     #[test]

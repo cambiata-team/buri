@@ -8,7 +8,7 @@ use prost::Message;
 pub mod version;
 
 const ENGINE: engine::GeneralPurpose =
-    engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::PAD);
+    engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
 
 pub fn encode_message_to_bytes<T>(message: &T) -> Vec<u8>
 where

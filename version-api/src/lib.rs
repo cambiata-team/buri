@@ -34,10 +34,10 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             let cache = Cache::default();
             let url = req.url()?;
             let cache_key = url.to_string();
-            let cached_response = cache.get(&cache_key, false).await?;
-            if let Some(cached_response) = cached_response {
-                return Ok(cached_response);
-            }
+            // let cached_response = cache.get(&cache_key, false).await?;
+            // if let Some(cached_response) = cached_response {
+            //     return Ok(cached_response);
+            // }
             let query = &return_if_error!(
                 url.query().ok_or("no query parameters"),
                 Response::error("Bad request: no query parameters", 400)
@@ -85,7 +85,6 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
             response
                 .headers_mut()
                 .set("cache-control", "s-maxage=3600")?;
-            let cache_key = url.to_string();
             cache.put(&cache_key, response.cloned()?).await?;
             Ok(response)
         })
