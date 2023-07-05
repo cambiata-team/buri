@@ -5,3 +5,10 @@ edition = "2021"
 
 [dependencies]
 files.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "parse_target"
+harness = false
