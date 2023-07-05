@@ -4,7 +4,9 @@ use vfs::{PhysicalFS, VfsError, VfsPath};
 mod init;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+// bin_name = "buri" because the user will invoke the CLI by running `buri`,
+// even though that's not the name of the actual binary.
+#[command(author, version, about, long_about = None, bin_name = "buri")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
