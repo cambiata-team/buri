@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
@@ -18,4 +20,4 @@ jobs:
 
       # Create and push a new tag with the current date
       - run: git tag -a ${{ steps.date.outputs.date }} -m "Nightly"
-      - run: git push "https://cambiata-team:${{ secrets.ACCESS_TOKEN }}@github.com/cambiata-team/buri.git" ${{ steps.date.outputs.date }}
+      - run: git push origin ${{ steps.date.outputs.date }}
