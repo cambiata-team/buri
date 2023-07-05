@@ -8,7 +8,7 @@ pub(crate) enum TargetName {
     /// Target name starts Index characters from the end of the raw string
     /// not including the colon.
     Specific(Index),
-    // TODO: support recursive targets
+    Recursive,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -43,6 +43,7 @@ impl Target {
     pub fn name(&self) -> &str {
         match &self.name {
             TargetName::Specific(index) => &self.raw_text[*index as usize..],
+            TargetName::Recursive => "...",
         }
     }
 }
