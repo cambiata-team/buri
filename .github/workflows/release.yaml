@@ -1,9 +1,10 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "*"
+  schedule:
+    # Every day at midnight pacific time
+    - cron: "0 7 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,14 +16,27 @@ jobs:
       release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+
+      - uses: fregante/setup-git-user@v2.0.1
+
+      - name: Create a tag
+        run: git tag -a ${{ steps.date.outputs.date }} -m "Nightly"
+
+      - name: Push tag
+        run: git push origin ${{ steps.date.outputs.date }}
+
       - name: Create Draft Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.date.outputs.date }}
+          release_name: ${{ steps.date.outputs.date }}
           draft: true
           prerelease: false
 
