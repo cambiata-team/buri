@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
+          # Use a personal access token so this workflow triggers
+          # the release workflow.
           token: ${{ secrets.ACCESS_TOKEN }}
       - name: Get current date
         id: date
