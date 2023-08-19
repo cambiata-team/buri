@@ -1,16 +1,16 @@
 [workspace]
 
 members = [
-    "cli",
-    "protos",
-    "thor",
-    "utils/build-graph",
-    "utils/files",
-    "utils/macros",
-    "utils/target",
-    "utils/test",
-    "utils/version",
-    "version-api",
+    "apps/cli",
+    "apps/thor",
+    "apps/version-api",
+    "libs/build-graph",
+    "libs/files",
+    "libs/macros",
+    "libs/protos",
+    "libs/target",
+    "libs/test",
+    "libs/version",
 ]
 
 [workspace.dependencies]
@@ -20,31 +20,31 @@ clap = { version = "4.3.11", features = ["derive"] }
 compact_str = { version = "0.7.1", features = ["serde", "smallvec"] }
 criterion = "0.5.1"
 dirs = "5.0.1"
-files = { path = "utils/files" }
+files = { path = "libs/files" }
 flate2 = "1.0.26"
 hex = "0.4.3"
-macros = { path = "utils/macros" }
+macros = { path = "libs/macros" }
 openssl = { version = "0.10.55", features = ["vendored"] }
 openssl-probe = "0.1.5"
 prost = "0.11.9"
 prost-build = "0.11.9"
 protobuf-src = "1.1.0"
-protos = { path = "protos" }
+protos = { path = "libs/protos" }
 reqwest = "0.11.18"
 serde = { version = "1.0.171", features = ["derive"] }
 serde_json = "1.0.102"
 sha2 = "0.10.7"
 smallvec = "1.11.0"
 tar = "0.4.38"
-target = { path = "utils/target" }
+target = { path = "libs/target" }
 tempfile = "3.6.0"
-test-utils = { path = "utils/test" }
+test-utils = { path = "libs/test" }
 tokio = { version = "1.29.1", features = ["full"] }
 toml = "0.7.6"
 toml_edit = "0.19.12"
 url = "2.4.0"
 vfs = "0.9.0"
-version = { path = "utils/version" }
+version = { path = "libs/version" }
 virtual-io = "0.1.0"
 worker = "0.0.17"
 
