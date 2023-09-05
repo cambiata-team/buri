@@ -14,7 +14,7 @@ jobs:
     outputs:
       release_id: ${{ steps.create_release.outputs.id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Create Draft Release
         id: create_release
         uses: actions/create-release@v1
@@ -46,7 +46,7 @@ jobs:
         binary: [cli, thor]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
 

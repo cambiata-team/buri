@@ -6,7 +6,7 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install stable --profile minimal
     - run: rustup component add clippy
@@ -21,7 +21,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install stable --profile minimal
     - uses: Swatinem/rust-cache@v2
@@ -36,7 +36,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install stable --profile minimal
     - uses: Swatinem/rust-cache@v2
