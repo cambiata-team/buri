@@ -41,7 +41,7 @@ tempfile = "3.6.0"
 test-utils = { path = "libs/test" }
 tokio = { version = "1.29.1", features = ["full"] }
 toml = "0.7.6"
-toml_edit = "0.19.12"
+toml_edit = "0.19.15"
 url = "2.4.0"
 vfs = "0.9.0"
 version = { path = "libs/version" }
