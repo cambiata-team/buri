@@ -16,7 +16,7 @@ members = [
 [workspace.dependencies]
 base64 = "0.21.2"
 bytes = "1.4.0"
-clap = { version = "4.3.11", features = ["derive"] }
+clap = { version = "4.4.5", features = ["derive"] }
 compact_str = { version = "0.7.1", features = ["serde", "smallvec"] }
 criterion = "0.5.1"
 dirs = "5.0.1"
